@@ -134,6 +134,7 @@
     <ClCompile Include="common\ImguiManager.cpp" />
     <ClCompile Include="common\Keyboard.cpp" />
     <ClCompile Include="common\Mouse.cpp" />
+    <ClCompile Include="common\RenderStates.cpp" />
     <ClCompile Include="Fluid3D.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="common\ImguiManager.h" />
     <ClInclude Include="common\Keyboard.h" />
     <ClInclude Include="common\Mouse.h" />
+    <ClInclude Include="common\RenderStates.h" />
     <ClInclude Include="Fluid3D.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />

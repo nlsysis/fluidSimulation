@@ -106,9 +106,9 @@ int3 CalcGridPos(float3 position)
     int3 gridPos;
     float3 originPosW = g_originPosW.xyz;
     float3 cellSize = g_vGridDim.xyz;
-    gridPos.x = floor((position.x - originPosW.x) / cellSize.x);
-    gridPos.y = floor((position.y - originPosW.y) / cellSize.y);
-    gridPos.z = floor((position.z - originPosW.z) / cellSize.z);
+    gridPos.x = floor((position.x - originPosW.x) * cellSize.x);
+    gridPos.y = floor((position.y - originPosW.y) * cellSize.y);
+    gridPos.z = floor((position.z - originPosW.z) * cellSize.z);
 
     return gridPos;
 }

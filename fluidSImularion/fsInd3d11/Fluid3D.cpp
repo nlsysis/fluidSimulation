@@ -20,7 +20,7 @@ const UINT TRANSPOSE_BLOCK_SIZE = 16;
 
 const UINT NUM_PARTICLES_8K = 8 * 1024;
 const UINT NUM_PARTICLES_16K = 16 * 1024;
-UINT g_iNumParticles3D = NUM_PARTICLES_8K;   //default use particle number
+UINT g_iNumParticles3D = NUM_PARTICLES_16K;   //default use particle number
 
 //Particle Properties
 //float g_fInitialParticleSpacing3D = 0.0045f;      //initial particle space
@@ -36,9 +36,9 @@ UINT g_iNumParticles3D = NUM_PARTICLES_8K;   //default use particle number
 //float g_fParticleRadius = 0.0012f;
 
 float g_fSmoothlen3D = 2.0f;                  //for test
-float g_fPressureStiffness3D = 1000.25f;
+float g_fPressureStiffness3D = 100.25f;
 float g_fRestDensity3D = 1.5f;
-float g_fParticleMass3D = 2.5f;
+float g_fParticleMass3D = 0.75f;
 float g_fViscosity3D = 1.0f;                     //
 
 float g_fMaxAllowableTimeStep3D = 0.005f;        //
@@ -292,12 +292,13 @@ void Fluid3D::DrawScene(float fElapsedTime)
 		ImGui::SliderFloat("Gravity", &g_vGravity3D.y, -100.0f, 10.0f);
 		ImGui::SliderFloat("SmoothLen", &g_fSmoothlen3D,0.0f, 10.0f);
 		ImGui::SliderFloat("RestDensity", &g_fRestDensity3D, 800.0f, 1200.0f);
-		ImGui::SliderFloat("ParticleMass", &g_fParticleMass3D,0.0f, 1.0f);
+		ImGui::SliderFloat("ParticleMass", &g_fParticleMass3D,0.0f, 10.0f);
 		ImGui::SliderFloat("Viscosity", &g_fViscosity3D, 0.0f, 1.0f);
 		ImGui::SliderFloat("ForceStiff", &g_fWallStiffness3D, 3000.0f, 5000.0f);
+		ImGui::SliderFloat("sphereRadius", &g_fParticleRadius, 0.5f, 1.0f);
 
 		float  fDensityCoef = g_fParticleMass3D * 315.0f / (64.0f * XM_PI * pow(g_fSmoothlen3D, 9));;
-		ImGui::Text("ParticleRenderSize:%0.10f", &fDensityCoef, 0.0f, 10.0f);
+		ImGui::Text("ParticleRenderSize:%0.10f", &fDensityCoef);
 
 		float fGradPressureCoef = g_fParticleMass3D * -45.0f / (XM_PI * pow(g_fSmoothlen3D, 6));
 		ImGui::Text("GradPressureCoef %0.10f", &fGradPressureCoef);
@@ -712,7 +713,7 @@ void Fluid3D::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float fEl
 	//-------------------
 	//float cellSize = 2 * g_fSmoothlen3D / g_fInitialParticleSpacing3D;
 	//float unitSize = 2 * g_fSmoothlen3D;
-	pData.vGridDim.x = pData.vGridDim.y = pData.vGridDim.z = g_fSmoothlen3D;
+	pData.vGridDim.x = pData.vGridDim.y = pData.vGridDim.z = 1 / g_fSmoothlen3D;
 
 	// Collision information for the map
 	pData.fWallStiffness = g_fWallStiffness3D;

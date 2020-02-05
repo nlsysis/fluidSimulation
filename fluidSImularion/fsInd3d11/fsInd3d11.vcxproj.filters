@@ -19,6 +19,12 @@
     <Filter Include="core">
       <UniqueIdentifier>{203cc1ed-c9e7-413d-80a4-4e5c939f5805}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shader\fluid3DSPH">
+      <UniqueIdentifier>{6df3b6b7-d548-4521-b803-7c319e87d598}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\fluid2D">
+      <UniqueIdentifier>{fa8f6719-bb2e-465d-b119-3a6e39746e51}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="common\D3DApp.cpp">
@@ -90,6 +96,9 @@
     </ClCompile>
     <ClCompile Include="Fluid3D.cpp">
       <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="common\RenderStates.cpp">
+      <Filter>common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -174,31 +183,36 @@
     <ClInclude Include="cbufferStruct.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="common\RenderStates.h">
+      <Filter>common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shader\BitonicSortCS.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\ComputeShaderSort11.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\Fluid3DRender.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\Fluid3DTest.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\FluidCS11.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\FluidRender.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
     <FxCompile Include="shader\LightHelper.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
     <FxCompile Include="shader\color.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\BitonicSortCS.hlsl">
+      <Filter>shader\fluid3DSPH</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\Fluid3DTest.hlsl">
+      <Filter>shader\fluid3DSPH</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\Fluid3DRender.hlsl">
+      <Filter>shader\fluid3DSPH</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\ComputeShaderSort11.hlsl">
+      <Filter>shader\fluid2D</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\FluidCS11.hlsl">
+      <Filter>shader\fluid2D</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\FluidRender.hlsl">
+      <Filter>shader\fluid2D</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
