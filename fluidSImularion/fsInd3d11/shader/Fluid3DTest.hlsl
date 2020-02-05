@@ -60,7 +60,7 @@ cbuffer cbSimulationConstants : register(b0)
     float g_fParticleRadius;
     float3 g_vGridDim; //cell size
     float3 g_vGridSize; //grid size
-    float padding2;
+    float boundaryDampening;
     float4 g_originPosW;
     
 };

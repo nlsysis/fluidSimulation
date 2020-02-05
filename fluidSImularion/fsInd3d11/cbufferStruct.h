@@ -39,7 +39,7 @@ struct CBTest
 	XMFLOAT3  vGridDim;
 
 	XMFLOAT3  vGridSize;
-	float padding2;
+	float boundaryDampening;    //two sphere collisiton
 	XMFLOAT4  originPos;
 };
 

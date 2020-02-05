@@ -23,33 +23,32 @@ const UINT NUM_PARTICLES_16K = 16 * 1024;
 UINT g_iNumParticles3D = NUM_PARTICLES_8K;   //default use particle number
 
 //Particle Properties
-float g_fInitialParticleSpacing3D = 0.0045f;      //initial particle space
-float g_fSmoothlen3D = 0.012f;                   //光滑核函数作用范围长度
-float g_fPressureStiffness3D = 2000.0f;          //
-float g_fRestDensity3D = 1000.0f;                //p0静态流体密度
-float g_fParticleMass3D = 0.0002f;               //the mass of particles
-float g_fViscosity3D = 1.0f;                     //
-float g_fParticleRenderSize3D = 0.0012f;
-float g_fMaxAllowableTimeStep3D = 0.0075f;
-float g_fParticleAspectRatio = 1.0f;
-float g_fDelta = 10.0f;
-float g_fParticleRadius = 0.0012f;
-
-//float g_fSmoothlen3D = 2.0f;  //for test
-//float g_fPressureStiffness3D = 1000.25f;
-//float g_fRestDensity3D = 1.5f;
-//float g_fParticleMass3D = 2.5f;
+//float g_fInitialParticleSpacing3D = 0.0045f;      //initial particle space
+//float g_fSmoothlen3D = 0.012f;                   //光滑核函数作用范围长度
+//float g_fPressureStiffness3D = 2000.0f;          //
+//float g_fRestDensity3D = 1000.0f;                //p0静态流体密度
+//float g_fParticleMass3D = 0.0002f;               //the mass of particles
 //float g_fViscosity3D = 1.0f;                     //
-//
-//float g_fMaxAllowableTimeStep3D = 0.005f;        //
-//float g_fParticleRenderSize3D = 0.4f;          //
+//float g_fParticleRenderSize3D = 0.0012f;
+//float g_fMaxAllowableTimeStep3D = 0.0075f;
+//float g_fParticleAspectRatio = 1.0f;
+//float g_fDelta = 10.0f;
+//float g_fParticleRadius = 0.0012f;
 
+float g_fSmoothlen3D = 2.0f;                  //for test
+float g_fPressureStiffness3D = 1000.25f;
+float g_fRestDensity3D = 1.5f;
+float g_fParticleMass3D = 2.5f;
+float g_fViscosity3D = 1.0f;                     //
 
+float g_fMaxAllowableTimeStep3D = 0.005f;        //
+float g_fParticleRenderSize3D = 0.4f;          //
+float g_fParticleRadius = 1.0f;
 //Gravity Directions
-const XMFLOAT3 GRAVITY_DOWN(0, -0.5f, 0.0f);
-const XMFLOAT3 GRAVITY_UP(0.0f, 0.5f, 0.0f);
-const XMFLOAT3 GRAVITY_LEFT(-0.5f, 0.0f, 0.0f);
-const XMFLOAT3 GRAVITY_RIGHT(0.5f, 0.0f, 0.0f);
+const XMFLOAT3 GRAVITY_DOWN(0, -9.8f, 0.0f);
+const XMFLOAT3 GRAVITY_UP(0.0f, 9.8f, 0.0f);
+const XMFLOAT3 GRAVITY_LEFT(-9.8f, 0.0f, 0.0f);
+const XMFLOAT3 GRAVITY_RIGHT(9.8f, 0.0f, 0.0f);
 XMFLOAT3 g_vGravity3D = GRAVITY_DOWN;  //default gracity direction
 
 
@@ -65,9 +64,13 @@ float g_speedLimiting = 200.0f;
 //These values should not be larger than GRID_SIZE * fSmothlen[the volumn of simulation space]
 //Since the map must be divided up into fSmoothlen sized grid cells
 //And the grid cell is used as a 32-bit sort key,32-bits for x ,y and z
-float g_fMapHeight3D = 0.3f;
-float g_fMapWidth3D = 0.5f;
-float g_fMapLength3D = 0.5f;
+//float g_fMapHeight3D = 0.3f;
+//float g_fMapWidth3D = 0.5f;
+//float g_fMapLength3D = 0.5f;
+
+float g_fMapHeight3D = GRID_SIZE;
+float g_fMapWidth3D = GRID_SIZE;
+float g_fMapLength3D = GRID_SIZE;
 XMFLOAT4 g_vPlanes[6] = {
 	XMFLOAT4(1,0,0,-g_fParticleRadius),
 	XMFLOAT4(0,1,0,-g_fParticleRadius),
@@ -90,7 +93,7 @@ eSimulationMode3D g_eSimMode = SIM_MODE_GRID;
 
 
 Fluid3D::Fluid3D(HINSTANCE hInstance)
-	:D3DApp(hInstance), mTheta(1.5f*MathHelper::Pi), mPhi(0.25f*MathHelper::Pi),mRadius(2.0f),
+	:D3DApp(hInstance), mTheta(1.5f*MathHelper::Pi), mPhi(0.25f*MathHelper::Pi),mRadius(200.0f),
 	mBoxVB(0), mBoxIB(0), mVertexShader(0), mPixelShader(0), mInputLayout(0)
 {
 	mMainWndCaption = L"Fluid 3D Demo";
@@ -362,7 +365,7 @@ HRESULT Fluid3D::CreateSimulationBuffers()
 	float rndX, rndY, rndZ;
 	std::mt19937 eng(std::random_device{}());
 	float velRange = GRID_SIZE * 0.5f;
-	std::uniform_real_distribution<float> dist(0.0, 0.3);   //intial fluid position
+	std::uniform_real_distribution<float> dist(0.0, 30);   //intial fluid position
 
 	for (UINT i = 0; i < g_iNumParticles3D; i++)
 	{
@@ -707,8 +710,8 @@ void Fluid3D::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float fEl
 	//|     |     |     | 
 	//|     |     |     |       
 	//-------------------
-	float cellSize = 2 * g_fSmoothlen3D / g_fInitialParticleSpacing3D;
-	float unitSize = 2 * g_fSmoothlen3D;
+	//float cellSize = 2 * g_fSmoothlen3D / g_fInitialParticleSpacing3D;
+	//float unitSize = 2 * g_fSmoothlen3D;
 	pData.vGridDim.x = pData.vGridDim.y = pData.vGridDim.z = g_fSmoothlen3D;
 
 	// Collision information for the map
