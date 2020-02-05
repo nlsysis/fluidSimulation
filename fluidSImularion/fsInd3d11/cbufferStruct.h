@@ -34,9 +34,10 @@ struct CBTest
 	float fGradPressureCoef;
 	float fLapViscosityCoef;
 	float fWallStiffness;
-
+	
+	float fParticleRadius;
 	XMFLOAT3  vGridDim;
-	float padding;
+
 	XMFLOAT3  vGridSize;
 	float padding2;
 	XMFLOAT4  originPos;

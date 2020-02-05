@@ -57,9 +57,8 @@ cbuffer cbSimulationConstants : register(b0)
     float g_fLapViscosityCoef;
     float g_fWallStiffness;
     
-   
+    float g_fParticleRadius;
     float3 g_vGridDim; //cell size
-    float padding;
     float3 g_vGridSize; //grid size
     float padding2;
     float4 g_originPosW;
@@ -101,7 +100,7 @@ StructuredBuffer<uint2> GridIndicesRO : register(t4);
 // For simplicity, this sample uses a 16-bit hash based on the grid cell and
 // a 16-bit particle ID to keep track of the particles while sorting
 
-//Calculates the grid position from input position
+//Calculates the grid position from input position[0-GRIDSIZE]
 int3 CalcGridPos(float3 position)
 {
     int3 gridPos;

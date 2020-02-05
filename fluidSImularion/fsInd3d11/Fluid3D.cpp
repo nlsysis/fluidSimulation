@@ -8,7 +8,7 @@
 //Compute Shader Constants
 //Grid cell key size for sorting.8-bit for x and y
 //const UINT NUM_GRID_INDICES = 65536;
-const UINT GRID_SIZE = 64;
+const UINT GRID_SIZE = 64;    //the number of grid in 3 dim
 const UINT NUM_GRID_INDICES = (GRID_SIZE * GRID_SIZE * GRID_SIZE);
 
 //Numthreads size for the simulation
@@ -19,8 +19,8 @@ const UINT BITONIC_BLOCK_SIZE = 512;
 const UINT TRANSPOSE_BLOCK_SIZE = 16;
 
 const UINT NUM_PARTICLES_8K = 8 * 1024;
-const UINT NUM_PARTICLES_16K = 8 * 1024;
-UINT g_iNumParticles3D = NUM_PARTICLES_16K;   //default use particle number
+const UINT NUM_PARTICLES_16K = 16 * 1024;
+UINT g_iNumParticles3D = NUM_PARTICLES_8K;   //default use particle number
 
 //Particle Properties
 float g_fInitialParticleSpacing3D = 0.0045f;      //initial particle space
@@ -29,10 +29,11 @@ float g_fPressureStiffness3D = 2000.0f;          //
 float g_fRestDensity3D = 1000.0f;                //p0静态流体密度
 float g_fParticleMass3D = 0.0002f;               //the mass of particles
 float g_fViscosity3D = 1.0f;                     //
-float g_fParticleRenderSize3D = 0.00125f;
+float g_fParticleRenderSize3D = 0.0012f;
 float g_fMaxAllowableTimeStep3D = 0.0075f;
 float g_fParticleAspectRatio = 1.0f;
 float g_fDelta = 10.0f;
+float g_fParticleRadius = 0.0012f;
 
 //float g_fSmoothlen3D = 2.0f;  //for test
 //float g_fPressureStiffness3D = 1000.25f;
@@ -45,22 +46,13 @@ float g_fDelta = 10.0f;
 
 
 //Gravity Directions
-//const XMFLOAT4 GRAVITY_DOWN(0, -9.8f,0.0f, 0.0f);
-//const XMFLOAT4 GRAVITY_UP(0.0f, 9.8f, 0.0f, 0.0f);
-//const XMFLOAT4 GRAVITY_LEFT(-9.8f, 0.0f, 0.0f, 0.0f);
-//const XMFLOAT4 GRAVITY_RIGHT(9.8f, 0.0f, 0.0f, 0.0f);
-//XMFLOAT4 g_vGravity3D = GRAVITY_DOWN;  //default gracity direction
-
 const XMFLOAT3 GRAVITY_DOWN(0, -0.5f, 0.0f);
 const XMFLOAT3 GRAVITY_UP(0.0f, 0.5f, 0.0f);
 const XMFLOAT3 GRAVITY_LEFT(-0.5f, 0.0f, 0.0f);
 const XMFLOAT3 GRAVITY_RIGHT(0.5f, 0.0f, 0.0f);
 XMFLOAT3 g_vGravity3D = GRAVITY_DOWN;  //default gracity direction
 
-//Map Size
-//These values should not be larger than 256 * fSmothlen
-//Since the map must be divided up into fSmoothlen sized grid cells
-//And the grid cell is used as a 16-bit sort key,8-bits for x and y
+
 
 //Map Wall Collision Planes
 float g_fWallStiffness3D = 3000.0f;
@@ -68,17 +60,21 @@ float g_boundaryDampening = 256.0f;
 float g_speedLimiting = 200.0f;
 //float g_fWallStiffness3D = 0.7f;
 
-//float volumeSize =10; //the half size of fluid volume
+
+//Map Size
+//These values should not be larger than GRID_SIZE * fSmothlen[the volumn of simulation space]
+//Since the map must be divided up into fSmoothlen sized grid cells
+//And the grid cell is used as a 32-bit sort key,32-bits for x ,y and z
 float g_fMapHeight3D = 0.3f;
 float g_fMapWidth3D = 0.5f;
-float g_fMapLength3D = 1.0f;
+float g_fMapLength3D = 0.5f;
 XMFLOAT4 g_vPlanes[6] = {
-	XMFLOAT4(1,0,0,0),
-	XMFLOAT4(0,1,0,0),
-	XMFLOAT4(0,0,1,0),
-	XMFLOAT4(-1,0,0,g_fMapWidth3D),
-	XMFLOAT4(0,-1,0,g_fMapHeight3D),
-	XMFLOAT4(0,0,-1,g_fMapLength3D)
+	XMFLOAT4(1,0,0,-g_fParticleRadius),
+	XMFLOAT4(0,1,0,-g_fParticleRadius),
+	XMFLOAT4(0,0,1,-g_fParticleRadius),
+	XMFLOAT4(-1,0,0,g_fMapWidth3D + g_fParticleRadius),
+	XMFLOAT4(0,-1,0,g_fMapHeight3D + g_fParticleRadius),
+	XMFLOAT4(0,0,-1,g_fMapLength3D + g_fParticleRadius)
 };
 
 
@@ -94,7 +90,7 @@ eSimulationMode3D g_eSimMode = SIM_MODE_GRID;
 
 
 Fluid3D::Fluid3D(HINSTANCE hInstance)
-	:D3DApp(hInstance), mTheta(1.5f*MathHelper::Pi), mPhi(0.25f*MathHelper::Pi),mRadius(150.0f),
+	:D3DApp(hInstance), mTheta(1.5f*MathHelper::Pi), mPhi(0.25f*MathHelper::Pi),mRadius(2.0f),
 	mBoxVB(0), mBoxIB(0), mVertexShader(0), mPixelShader(0), mInputLayout(0)
 {
 	mMainWndCaption = L"Fluid 3D Demo";
@@ -295,15 +291,16 @@ void Fluid3D::DrawScene(float fElapsedTime)
 		ImGui::SliderFloat("RestDensity", &g_fRestDensity3D, 800.0f, 1200.0f);
 		ImGui::SliderFloat("ParticleMass", &g_fParticleMass3D,0.0f, 1.0f);
 		ImGui::SliderFloat("Viscosity", &g_fViscosity3D, 0.0f, 1.0f);
+		ImGui::SliderFloat("ForceStiff", &g_fWallStiffness3D, 3000.0f, 5000.0f);
 
 		float  fDensityCoef = g_fParticleMass3D * 315.0f / (64.0f * XM_PI * pow(g_fSmoothlen3D, 9));;
-		ImGui::Text("ParticleRenderSize:%0.5f", &fDensityCoef, 0.0f, 10.0f);
+		ImGui::Text("ParticleRenderSize:%0.10f", &fDensityCoef, 0.0f, 10.0f);
 
 		float fGradPressureCoef = g_fParticleMass3D * -45.0f / (XM_PI * pow(g_fSmoothlen3D, 6));
-		ImGui::Text("GradPressureCoef %0.5f", &fGradPressureCoef);
+		ImGui::Text("GradPressureCoef %0.10f", &fGradPressureCoef);
 
 		float fLapViscosityCoef = g_fParticleMass3D * g_fViscosity3D * 45.0f / (XM_PI * pow(g_fSmoothlen3D, 6));
-		ImGui::Text("LapViscosityCoef  %0.5f", &fLapViscosityCoef);
+		ImGui::Text("LapViscosityCoef  %0.10f", &fLapViscosityCoef);
 	}
 	ImGui::End();
 
@@ -365,17 +362,13 @@ HRESULT Fluid3D::CreateSimulationBuffers()
 	float rndX, rndY, rndZ;
 	std::mt19937 eng(std::random_device{}());
 	float velRange = GRID_SIZE * 0.5f;
-	std::uniform_real_distribution<float> dist(-20, 20);   //intial fluid position
+	std::uniform_real_distribution<float> dist(0.0, 0.3);   //intial fluid position
 
 	for (UINT i = 0; i < g_iNumParticles3D; i++)
 	{
 		rndX = dist(eng) ;
 		rndY = dist(eng);
 		rndZ = dist(eng) ;
-
-		float velX = ((float(rand()) / float(RAND_MAX)) * (velRange - (-velRange))) + (-velRange);
-		float velY = ((float(rand()) / float(RAND_MAX)) * (velRange - (-velRange))) + (-velRange);
-		float velZ = ((float(rand()) / float(RAND_MAX)) * (velRange - (-velRange))) + (-velRange);
 
 		particles[i].vPosition = XMFLOAT3(rndX, rndY, rndZ);
 		particles[i].vVelocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -716,11 +709,12 @@ void Fluid3D::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float fEl
 	//-------------------
 	float cellSize = 2 * g_fSmoothlen3D / g_fInitialParticleSpacing3D;
 	float unitSize = 2 * g_fSmoothlen3D;
-	pData.vGridDim.x = pData.vGridDim.y = pData.vGridDim.z = 2 * mParticleRadius;
+	pData.vGridDim.x = pData.vGridDim.y = pData.vGridDim.z = g_fSmoothlen3D;
 
 	// Collision information for the map
 	pData.fWallStiffness = g_fWallStiffness3D;
 	pData.vGridSize.x = pData.vGridSize.y = pData.vGridSize.z = GRID_SIZE;
+	pData.fParticleRadius = g_fParticleRadius * 2;
 
 	pd3dImmediateContext->UpdateSubresource(g_pcbSimulationConstants, 0, NULL, &pData, 0, 0);
 
