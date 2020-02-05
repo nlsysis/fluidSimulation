@@ -1,4 +1,5 @@
 ﻿#include "Fluid3D.h"
+#include "cbufferStruct.h"
 #include <random>
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_win32.h"
@@ -27,7 +28,7 @@ float g_fSmoothlen3D = 0.012f;                   //光滑核函数作用范围�
 float g_fPressureStiffness3D = 2000.0f;          //
 float g_fRestDensity3D = 1000.0f;                //p0静态流体密度
 float g_fParticleMass3D = 0.0002f;               //the mass of particles
-float g_fViscosity3D = 0.1f;                     //
+float g_fViscosity3D = 1.0f;                     //
 float g_fParticleRenderSize3D = 0.00125f;
 float g_fMaxAllowableTimeStep3D = 0.0075f;
 float g_fParticleAspectRatio = 1.0f;
@@ -63,6 +64,8 @@ XMFLOAT3 g_vGravity3D = GRAVITY_DOWN;  //default gracity direction
 
 //Map Wall Collision Planes
 float g_fWallStiffness3D = 3000.0f;
+float g_boundaryDampening = 256.0f;
+float g_speedLimiting = 200.0f;
 //float g_fWallStiffness3D = 0.7f;
 
 //float volumeSize =10; //the half size of fluid volume
@@ -89,145 +92,6 @@ enum eSimulationMode3D
 
 eSimulationMode3D g_eSimMode = SIM_MODE_GRID;
 
-//constant buffer layout
-#pragma warning(push)
-#pragma warning(disable:4324)   //structure was padded due to _declspec(align())
-_DECLSPEC_ALIGN_16_ struct CBSimulationConstants3D
-{
-	UINT iNumParticles;
-	float fTimeStep;
-	float fSmoothlen;
-	float fPressureStiffness;
-	float fRestDensity;
-	float fDensityCoef;
-	float fGradPressureCoef;
-	float fLapViscosityCoef;
-	float fWallStiffness;
-
-	XMFLOAT4  vGravity;
-	XMFLOAT4  vGridDim;
-	XMFLOAT4  vGridSize;
-	XMFLOAT4  originPos;
-};
-
-struct CBTest
-{
-	UINT iNumParticles;
-	XMFLOAT3  vGravity;
-	float fTimeStep;
-	float fSmoothlen;
-	float fPressureStiffness;
-	float fRestDensity;
-	float fDensityCoef;
-	float fGradPressureCoef;
-	float fLapViscosityCoef;
-	float fWallStiffness;
-	
-	XMFLOAT3  vGridDim;
-	float padding;
-	XMFLOAT3  vGridSize;
-	float padding2;
-	XMFLOAT4  originPos;
-};
-
-_DECLSPEC_ALIGN_16_ struct CBPlanes
-{
-	XMFLOAT4  vPlanes[6];
-};
-
-_DECLSPEC_ALIGN_16_ struct CBRenderConstants
-{
-	XMFLOAT4X4 mViewProjection;
-	float fParticleSize;
-};
-
-_DECLSPEC_ALIGN_16_ struct SortCB
-{
-	UINT iLevel;
-	UINT iLevelMask;
-	UINT iWidth;
-	UINT iHeight;
-};
-
-#pragma warning(pop)
-
-
-
-// --------------------------------------------------------------------------------------
-// Helper for creating constant buffers
-//--------------------------------------------------------------------------------------
-template <class T>
-HRESULT CreateConstantBuffer(ID3D11Device* pd3dDevice, ID3D11Buffer** ppCB)
-{
-	HRESULT hr = S_OK;
-
-	D3D11_BUFFER_DESC Desc;
-	Desc.Usage = D3D11_USAGE_DEFAULT;
-	Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	Desc.CPUAccessFlags = 0;
-	Desc.MiscFlags = 0;
-	Desc.ByteWidth = sizeof(T);
-	HR(pd3dDevice->CreateBuffer(&Desc, NULL, ppCB));
-
-	return hr;
-}
-
-template <class T>
-HRESULT CreateConstantBuffer2(ID3D11Device* pd3dDevice, ID3D11Buffer** ppCB)
-{
-	HRESULT hr = S_OK;
-
-	D3D11_BUFFER_DESC Desc;
-	Desc.Usage = D3D11_USAGE_DYNAMIC;
-	Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	Desc.MiscFlags = 0;
-	Desc.ByteWidth = sizeof(T);
-	HR(pd3dDevice->CreateBuffer(&Desc, NULL, ppCB));
-
-	return hr;
-}
-
-//--------------------------------------------------------------------------------------
-// Helper for creating structured buffers with an SRV and UAV
-//--------------------------------------------------------------------------------------
-template <class T>
-HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D11Buffer** ppBuffer, ID3D11ShaderResourceView** ppSRV, ID3D11UnorderedAccessView** ppUAV, const T* pInitialData = NULL)
-{
-	HRESULT hr = S_OK;
-
-	// Create SB
-	D3D11_BUFFER_DESC bufferDesc;
-	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-	bufferDesc.ByteWidth = iNumElements * sizeof(T);
-	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	bufferDesc.StructureByteStride = sizeof(T);
-
-	D3D11_SUBRESOURCE_DATA bufferInitData;
-	ZeroMemory(&bufferInitData, sizeof(bufferInitData));
-	bufferInitData.pSysMem = pInitialData;
-	HR(pd3dDevice->CreateBuffer(&bufferDesc, (pInitialData) ? &bufferInitData : NULL, ppBuffer));
-
-	// Create SRV
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-	ZeroMemory(&srvDesc, sizeof(srvDesc));
-	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-	srvDesc.Buffer.ElementWidth = iNumElements;
-	HR(pd3dDevice->CreateShaderResourceView(*ppBuffer, &srvDesc, ppSRV));
-
-	// Create UAV
-	D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
-	ZeroMemory(&uavDesc, sizeof(uavDesc));
-	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-	uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-	uavDesc.Buffer.NumElements = iNumElements;
-	HR(pd3dDevice->CreateUnorderedAccessView(*ppBuffer, &uavDesc, ppUAV));
-
-	return hr;
-}
 
 Fluid3D::Fluid3D(HINSTANCE hInstance)
 	:D3DApp(hInstance), mTheta(1.5f*MathHelper::Pi), mPhi(0.25f*MathHelper::Pi),mRadius(150.0f),
@@ -426,8 +290,20 @@ void Fluid3D::DrawScene(float fElapsedTime)
 	//Imgui setting
 	if (ImGui::Begin("Fluid Coff"))
 	{
-		ImGui::SliderFloat("Speed Factor", &g_vGravity3D.y, -100.0f, 10.0f);
-		ImGui::Text("Setinng %0.1f", &g_fViscosity3D);
+		ImGui::SliderFloat("Gravity", &g_vGravity3D.y, -100.0f, 10.0f);
+		ImGui::SliderFloat("SmoothLen", &g_fSmoothlen3D,0.0f, 10.0f);
+		ImGui::SliderFloat("RestDensity", &g_fRestDensity3D, 800.0f, 1200.0f);
+		ImGui::SliderFloat("ParticleMass", &g_fParticleMass3D,0.0f, 1.0f);
+		ImGui::SliderFloat("Viscosity", &g_fViscosity3D, 0.0f, 1.0f);
+
+		float  fDensityCoef = g_fParticleMass3D * 315.0f / (64.0f * XM_PI * pow(g_fSmoothlen3D, 9));;
+		ImGui::Text("ParticleRenderSize:%0.5f", &fDensityCoef, 0.0f, 10.0f);
+
+		float fGradPressureCoef = g_fParticleMass3D * -45.0f / (XM_PI * pow(g_fSmoothlen3D, 6));
+		ImGui::Text("GradPressureCoef %0.5f", &fGradPressureCoef);
+
+		float fLapViscosityCoef = g_fParticleMass3D * g_fViscosity3D * 45.0f / (XM_PI * pow(g_fSmoothlen3D, 6));
+		ImGui::Text("LapViscosityCoef  %0.5f", &fLapViscosityCoef);
 	}
 	ImGui::End();
 

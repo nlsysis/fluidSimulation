@@ -148,6 +148,7 @@
     <ClCompile Include="reference\Vertex.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cbufferStruct.h" />
     <ClInclude Include="common\D3DApp.h" />
     <ClInclude Include="common\d3dUtil.h" />
     <ClInclude Include="common\font\Font2D.h" />

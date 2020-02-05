@@ -16,6 +16,9 @@
     <Filter Include="common\font">
       <UniqueIdentifier>{073b3f6c-b803-43e6-9eb2-25b6f78647f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="core">
+      <UniqueIdentifier>{203cc1ed-c9e7-413d-80a4-4e5c939f5805}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="common\D3DApp.cpp">
@@ -70,7 +73,6 @@
       <Filter>reference</Filter>
     </ClCompile>
     <ClCompile Include="InitDirectx3D.cpp" />
-    <ClCompile Include="Fluid3D.cpp" />
     <ClCompile Include="common\font\Font2D.cpp">
       <Filter>common\font</Filter>
     </ClCompile>
@@ -85,6 +87,9 @@
     </ClCompile>
     <ClCompile Include="common\font\Textclass.cpp">
       <Filter>common\font</Filter>
+    </ClCompile>
+    <ClCompile Include="Fluid3D.cpp">
+      <Filter>core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -148,7 +153,6 @@
     <ClInclude Include="reference\Vertex.h">
       <Filter>reference</Filter>
     </ClInclude>
-    <ClInclude Include="Fluid3D.h" />
     <ClInclude Include="common\font\Font2D.h">
       <Filter>common\font</Filter>
     </ClInclude>
@@ -163,6 +167,12 @@
     </ClInclude>
     <ClInclude Include="common\font\Textclass.h">
       <Filter>common\font</Filter>
+    </ClInclude>
+    <ClInclude Include="Fluid3D.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="cbufferStruct.h">
+      <Filter>core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
