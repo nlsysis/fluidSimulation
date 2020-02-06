@@ -31,8 +31,8 @@ float g_fParticleMass = 0.75f;
 float g_fViscosity = 1.0f;                     //
 
 float g_fMaxAllowableTimeStep = 0.005f;        //
-float g_fParticleRenderSize = 0.4f;          //
-float g_fParticleRadius2 = 1.0f;
+float g_fParticleRenderSize = 0.4f;          //the render size of particle
+float g_fParticleRadius2 = 1.0f;            //the size of partucle
 
 //Gravity Directions
 const XMFLOAT3 GRAVITY_DOWN(0, -9.8f, 0.0f);
@@ -70,10 +70,7 @@ XMFLOAT4 g_vPlanes2[6] = {
  FluidPBF:: FluidPBF(HINSTANCE hInstance)
 	:
 	 D3DApp(hInstance), 
-	 m_CameraMode(CameraMode::ThirdPerson),  
-	 mTheta(1.5f*MathHelper::Pi),
-	 mPhi(0.25f*MathHelper::Pi),
-	 mRadius(200.0f)
+	 m_CameraMode(CameraMode::ThirdPerson)
 
 {
 	mMainWndCaption = L"Fluid 3D Demo";
@@ -152,7 +149,7 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 		ImGui::SliderFloat("sphereRadius", &g_fParticleRadius2, 0.5f, 1.0f);
 
 		ImGui::Text("ParticleRenderSize:%0.10f", &fDensityCoef);
-		ImGui::Text("GradPressureCoef %0.10f", &fGradPressureCoef);		
+		ImGui::Text("GradPressureCoef %0.10f", &fGradPressureCoef); 		
 		ImGui::Text("LapViscosityCoef  %0.10f", &fLapViscosityCoef);
 	}
 	ImGui::End();
@@ -199,18 +196,6 @@ HRESULT  FluidPBF::CreateSimulationBuffers()
 	
 	// Create the initial particle positions
 	// This is only used to populate the GPU buffers on creation
-	//const UINT iStartingWidth = (UINT)sqrt((FLOAT)g_iNumParticles3D);
-	//Particle* particles = new Particle[g_iNumParticles3D];
-	//ZeroMemory(particles, sizeof(Particle) * g_iNumParticles3D);
-	//for (UINT i = 0; i < g_iNumParticles3D; i++)
-	//{
-	//	// Arrange the particles in a nice square
-	//	UINT x = i % iStartingWidth;
-	//	UINT y = i / iStartingWidth;
-	//	particles[i].vPosition = XMFLOAT3(g_fInitialParticleSpacing3D * (FLOAT)x, g_fInitialParticleSpacing3D * (FLOAT)y, g_fInitialParticleSpacing3D * (FLOAT)x);
-	//	particles[i].vVelocity = XMFLOAT3(0.0f, 0.0f,0.0f);
-	//}
-
 	Particle* particles = new Particle[g_iNumParticles];
 	ZeroMemory(particles, sizeof(Particle) * g_iNumParticles);
 	float rndX, rndY, rndZ;
@@ -569,7 +554,7 @@ void  FluidPBF::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float f
 	// Collision information for the map
 	pData.fWallStiffness = g_fWallStiffness;
 	pData.vGridSize.x = pData.vGridSize.y = pData.vGridSize.z = GRID_SIZE;
-	pData.fParticleRadius = g_fParticleRadius2 * 2;
+	pData.fParticleRadius = g_fParticleRadius2 * 2;     //the diamater of sphere use for collision later
 
 	pd3dImmediateContext->UpdateSubresource(g_pcbSimulationConstants.Get(), 0, NULL, &pData, 0, 0);
 
@@ -661,9 +646,7 @@ void FluidPBF::InitCamera()
 	XMFLOAT3 target =XMFLOAT3(0.0f,0.0f,0.0f);
 	camera->SetTarget(target);
 	camera->SetDistance(150.0f);
-	camera->SetDistanceMinMax(100.0f, 200.0f);
-//	camera->UpdateViewMatrix();
-//	camera->LookAt(XMFLOAT3(150.0f,150.0f,150.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
+	camera->SetDistanceMinMax(10.0f, 200.0f);
 }
 
 void FluidPBF::UpdateCamera(float dt)
@@ -718,13 +701,14 @@ void FluidPBF::UpdateCamera(float dt)
 	// ThirdPerson camera 
 	else if (m_CameraMode == CameraMode::ThirdPerson)
 	{
+		
 		/// rotation
 		if (mouseState.leftButton == true && m_MouseTracker.leftButton == m_MouseTracker.HELD)
 		{
 			cam3rd->RotateX((mouseState.y - lastMouseState.y) * dt * 1.25f);
 			cam3rd->RotateY((mouseState.x - lastMouseState.x) * dt * 1.25f);
 		}
-		cam3rd->Approach(-mouseState.scrollWheelValue / 120 * 1.0f);
+		cam3rd->Approach(-mouseState.scrollWheelValue / 60 * 1.0f);
 	}
 
 	// updateview matrix

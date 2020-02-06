@@ -228,4 +228,9 @@
       <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shader\fluid3DRenderSphere.hlsl">
+      <Filter>shader\fluid3DSPH</Filter>
+    </FxCompile>
+  </ItemGroup>
 </Project>

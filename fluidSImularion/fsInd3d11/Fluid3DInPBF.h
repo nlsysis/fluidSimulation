@@ -94,14 +94,4 @@ private:
 	//camera
 	std::shared_ptr<Camera> m_pCamera;						  
 	CameraMode m_CameraMode;
-
-	//test
-	float mTheta;
-	float mPhi;
-	float mRadius;
-
-	XMFLOAT4X4 mWorld;
-	XMFLOAT4X4 mView;
-	XMFLOAT4X4 mProj;
-
 };
