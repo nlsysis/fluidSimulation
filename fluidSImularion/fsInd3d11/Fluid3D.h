@@ -1,43 +1,11 @@
 #pragma once
-#pragma once
 #include "d3dApp.h"
 #include "d3dx11Effect.h"
 #include "GeometryGenerator.h"
 #include "MathHelper.h"
 
 class Fluid3D : public D3DApp
-{
-private:
-	struct Particle
-	{
-		XMFLOAT3 vPosition;
-		XMFLOAT3 vVelocity;
-	};
-
-	struct ParticleDensity
-	{
-		float fDensity;
-	};
-
-	struct ParticleForces
-	{
-		XMFLOAT3 vAcceleration;
-	};
-
-	struct UINT2
-	{
-		UINT x;
-		UINT y;
-	};
-	struct Vertex
-	{
-		XMFLOAT3 Pos;
-		XMFLOAT4 Color;
-	};
-	struct MatrixBufferType
-	{
-		XMMATRIX mvp;
-	};
+{	
 public:
 	Fluid3D(HINSTANCE hInstance);
 	~Fluid3D();

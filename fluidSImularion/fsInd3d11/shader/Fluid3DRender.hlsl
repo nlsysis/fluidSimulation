@@ -122,7 +122,7 @@ void ParticleGS2(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> 
 // Pixel Shader
 //--------------------------------------------------------------------------------------
 
-float4 ParticlePS(VSParticleOut In) : SV_Target
+float4 ParticlePS(GSParticleOut In) : SV_Target
 {
     return In.color;
 }

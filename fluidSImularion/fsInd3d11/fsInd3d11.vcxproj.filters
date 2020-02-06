@@ -25,6 +25,9 @@
     <Filter Include="shader\fluid2D">
       <UniqueIdentifier>{fa8f6719-bb2e-465d-b119-3a6e39746e51}</UniqueIdentifier>
     </Filter>
+    <Filter Include="core\phf">
+      <UniqueIdentifier>{3fe1273e-f774-46e6-8e42-341e006a8e39}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="common\D3DApp.cpp">
@@ -98,6 +101,12 @@
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="common\RenderStates.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="Fluid3DInPBF.cpp">
+      <Filter>core\phf</Filter>
+    </ClCompile>
+    <ClCompile Include="common\Camera.cpp">
       <Filter>common</Filter>
     </ClCompile>
   </ItemGroup>
@@ -186,14 +195,12 @@
     <ClInclude Include="common\RenderStates.h">
       <Filter>common</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="shader\LightHelper.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
-    <FxCompile Include="shader\color.hlsl">
-      <Filter>shader</Filter>
-    </FxCompile>
+    <ClInclude Include="Fluid3DInPBF.h">
+      <Filter>core\phf</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Camera.h">
+      <Filter>common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\BitonicSortCS.hlsl">
@@ -213,6 +220,12 @@
     </CustomBuild>
     <CustomBuild Include="shader\FluidRender.hlsl">
       <Filter>shader\fluid2D</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\color.hlsl">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\LightHelper.hlsl">
+      <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>

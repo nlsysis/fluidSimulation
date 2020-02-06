@@ -1,5 +1,6 @@
 #include "d3dApp.h"
 #include "Fluid3D.h"
+#include "Fluid3DInPBF.h"
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -11,7 +12,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 #endif
 
 	//InitDirect3DApp theApp(hInstance);
-	Fluid3D theApp(hInstance);
+	FluidPBF theApp(hInstance);
 
 	if (!theApp.Init())
 		return 0;

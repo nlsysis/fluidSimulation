@@ -34,6 +34,7 @@ public:
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) { }
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) { }
 
+	enum class CameraMode { FirstPerson, ThirdPerson, Free };
 protected:
 	bool InitMainWindow();
 	bool InitDirect3D();
@@ -81,7 +82,7 @@ protected:
 	int mClientHeight;
 	float mScreenNear;
 	float mScreenDepth;
-	//  ?置?true?使用4XMSAA(§4.1.8)，默??false。
+	//  if use 4XMSAA(§4.1.8)，define false。
 	bool mEnable4xMsaa;
 
 	ImguiManager imgui;

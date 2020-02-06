@@ -1,6 +1,37 @@
 #pragma once
 #include "common/d3dUtil.h"
 
+struct Particle
+{
+	XMFLOAT3 vPosition;
+	XMFLOAT3 vVelocity;
+};
+
+struct ParticleDensity
+{
+	float fDensity;
+};
+
+struct ParticleForces
+{
+	XMFLOAT3 vAcceleration;
+};
+
+struct UINT2
+{
+	UINT x;
+	UINT y;
+};
+struct Vertex
+{
+	XMFLOAT3 Pos;
+	XMFLOAT4 Color;
+};
+struct MatrixBufferType
+{
+	XMMATRIX mvp;
+};
+
 //constant buffer layout
 #pragma warning(push)
 #pragma warning(disable:4324)   //structure was padded due to _declspec(align())

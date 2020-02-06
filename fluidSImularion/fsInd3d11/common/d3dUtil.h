@@ -54,7 +54,9 @@
 #ifndef SAFE_RELEASE
 #define SAFE_RELEASE(p)      { if (p) { (p)->Release(); (p)=NULL; } }
 #endif
-
+#ifndef SAFE_RELEASEComPtr
+#define SAFE_RELEASEComPtr(p)      { p.ReleaseAndGetAddressOf(); }
+#endif
 //---------------------------------------------------------------------------------------
 // Convenience macro for releasing COM objects.
 //---------------------------------------------------------------------------------------
