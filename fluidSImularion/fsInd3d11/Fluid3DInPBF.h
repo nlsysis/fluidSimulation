@@ -1,11 +1,19 @@
 #pragma once
 #include "d3dApp.h"
-#include "d3dx11Effect.h"
 #include "GeometryGenerator.h"
 #include "MathHelper.h"
 #include <wrl/client.h>
 #include "common/Camera.h"
+#include "reference/Texture.h"
+#include "SurfaceBuffers.h"
 
+enum RenderModel
+{
+	SIM_MODEL_INITIAL = 0,
+	SIM_MODEL_SPHERE,
+	SIM_MODEL_LIGHT,
+	SIM_MODEL_WATER
+};
 
 class FluidPBF : public D3DApp
 {
@@ -25,11 +33,14 @@ private:
 	void GPUSort(ID3D11DeviceContext* pd3dImmediateContext,
 		ID3D11UnorderedAccessView* inUAV, ID3D11ShaderResourceView* inSRV,
 		ID3D11UnorderedAccessView* tempUAV, ID3D11ShaderResourceView* tempSRV);
-	void SimulateFluid_Grid(ID3D11DeviceContext* pd3dImmediateContext);
-	void SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float fElapsedTime);
-	void RenderFluid(ID3D11DeviceContext* pd3dImmediateContext, float fElapsedTime);
+	void SimulateFluid_Grid();
+	void SimulateFluid(float fElapsedTime);
+	void RenderFluid(float fElapsedTime);
 	void InitCamera();
 	void UpdateCamera(float dt);
+	void RenderFluidInSphere(float fElapsedTime);
+
+	void BuildRenderShader(const WCHAR* fileName);
 
 private:
 	//Direct3D11 Grobal variables
@@ -88,10 +99,19 @@ private:
 	Microsoft::WRL::ComPtr < ID3D11Buffer>			g_pcbSimulationConstants ;
 	Microsoft::WRL::ComPtr < ID3D11Buffer>			g_pcbRenderConstants ;
 	Microsoft::WRL::ComPtr < ID3D11Buffer>			g_pSortCB ;
-	Microsoft::WRL::ComPtr < ID3D11Buffer>         g_pcbPlanes ;
+	Microsoft::WRL::ComPtr < ID3D11Buffer>          g_pcbPlanes ;
+	Microsoft::WRL::ComPtr < ID3D11Buffer>			g_pcbEyePos;
 
 
 	//camera
 	std::shared_ptr<Camera> m_pCamera;						  
 	CameraMode m_CameraMode;
+
+	//TextureManager
+	TextureManager* m_TextureMgr;
+
+	//depth/normal texture 
+	SurfaceBuffers* m_SurfaceBuffers;
+
+	RenderModel nRenderModel;
 };

@@ -150,9 +150,10 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="InitDirectx3D.cpp" />
-    <ClCompile Include="reference\d3dx11effect.cpp" />
     <ClCompile Include="reference\MathHelper.cpp" />
+    <ClCompile Include="reference\Texture.cpp" />
     <ClCompile Include="reference\Vertex.cpp" />
+    <ClCompile Include="SurfaceBuffers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cbufferStruct.h" />
@@ -181,10 +182,11 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="reference\d3dx11effect.h" />
     <ClInclude Include="reference\LightHelper.h" />
     <ClInclude Include="reference\MathHelper.h" />
+    <ClInclude Include="reference\Texture.h" />
     <ClInclude Include="reference\Vertex.h" />
+    <ClInclude Include="SurfaceBuffers.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\BitonicSortCS.hlsl">
@@ -216,6 +218,14 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\fluid3DRenderSphere.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\Fog.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="shader\FluidRenderSphere.hlsl">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

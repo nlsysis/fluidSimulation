@@ -3,6 +3,7 @@
 #include <random>
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_win32.h"
+#include "common/RenderStates.h"
 
 //global variables
 
@@ -70,13 +71,15 @@ XMFLOAT4 g_vPlanes2[6] = {
  FluidPBF:: FluidPBF(HINSTANCE hInstance)
 	:
 	 D3DApp(hInstance), 
-	 m_CameraMode(CameraMode::ThirdPerson)
+	 m_CameraMode(CameraMode::ThirdPerson),
+	 m_TextureMgr(nullptr),
+	 m_SurfaceBuffers(nullptr)
 
 {
 	mMainWndCaption = L"Fluid 3D Demo";
 	mEnable4xMsaa = false;
 	g_iNullUINT = 0;         //helper to clear buffers
-
+	nRenderModel = SIM_MODEL_INITIAL;
 }
 
  FluidPBF::~FluidPBF()
@@ -90,7 +93,13 @@ bool  FluidPBF::Init()
 		return false;
 
 	InitCamera();
-	
+	m_TextureMgr = new TextureManager();
+	m_TextureMgr->Init(md3dDevice, md3dDeviceContext);
+
+	//init surfaceBuffers
+	m_SurfaceBuffers = new SurfaceBuffers();
+	m_SurfaceBuffers->Init(md3dDevice, mClientWidth, mClientHeight);
+
 	CreateSimulationBuffers();
 	BuildShader();
 	return true;
@@ -106,6 +115,9 @@ void  FluidPBF::OnResize()
 		m_pCamera->SetFrustum(XM_PI / 4, GetAspectRatio(), 1.0f, 1000.0f);
 		m_pCamera->SetViewPort(0.0f, 0.0f, (float)mClientWidth, (float)mClientHeight);
 	}
+	if(nRenderModel == SIM_MODEL_SPHERE)
+		m_SurfaceBuffers->OnResize(md3dDevice, mClientWidth, mClientHeight);
+
 }
 
 void  FluidPBF::UpdateScene(float dt)
@@ -121,12 +133,13 @@ void  FluidPBF::DrawScene()
 void  FluidPBF::DrawScene(float fElapsedTime)
 {
 	
-	md3dDeviceContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::Silver));
+	md3dDeviceContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::Black));
 	md3dDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	SimulateFluid(md3dDeviceContext, fElapsedTime);
+	SimulateFluid(fElapsedTime);
 
-	RenderFluid(md3dDeviceContext, fElapsedTime);
+	//RenderFluid(fElapsedTime);
+	RenderFluidInSphere(fElapsedTime);
 
 	//imgui stuff
 	ImGui_ImplDX11_NewFrame();
@@ -134,10 +147,6 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 	ImGui::NewFrame();
 
 	//Imgui setting
-
-	float  fDensityCoef = g_fParticleMass * 315.0f / (64.0f * XM_PI * pow(g_fSmoothlen, 9));
-	float fGradPressureCoef = g_fParticleMass * -45.0f / (XM_PI * pow(g_fSmoothlen, 6));
-	float fLapViscosityCoef = g_fParticleMass * g_fViscosity * 45.0f / (XM_PI * pow(g_fSmoothlen, 6));
 	if (ImGui::Begin("Fluid Coff"))
 	{
 		ImGui::SliderFloat("Gravity", &g_vGravity.y, -100.0f, 10.0f);
@@ -148,15 +157,31 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 		ImGui::SliderFloat("ForceStiff", &g_fWallStiffness, 3000.0f, 5000.0f);
 		ImGui::SliderFloat("sphereRadius", &g_fParticleRadius2, 0.5f, 1.0f);
 
-		ImGui::Text("ParticleRenderSize:%0.10f", &fDensityCoef);
-		ImGui::Text("GradPressureCoef %0.10f", &fGradPressureCoef); 		
-		ImGui::Text("LapViscosityCoef  %0.10f", &fLapViscosityCoef);
+
 	}
+
+	const char* listbox_items[] = { "SIM_MODEL_INITIAL", "SIM_MODEL_SPHERE","SIM_MODEL_LIGHT","SIM_MODEL_WATER"};
+	static int selectedItem = nRenderModel;
+	ImGui::Combo("Simulationodel)", &selectedItem, listbox_items, IM_ARRAYSIZE(listbox_items));
+	
 	ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
+	if (nRenderModel != (RenderModel)selectedItem)
+	{
+		nRenderModel = (RenderModel)selectedItem;
+		switch (nRenderModel)
+		{
+		case SIM_MODEL_INITIAL:
+			BuildRenderShader(L".\\shader\\Fluid3DRender.hlsl");
+			break;
+		case SIM_MODEL_SPHERE:
+			BuildRenderShader(L".\\shader\\FluidRenderSphere.hlsl");
+			break;
+		}
+	}
 	HR(mSwapChain->Present(0, 0));
 
 }
@@ -193,7 +218,9 @@ HRESULT  FluidPBF::CreateSimulationBuffers()
 	SAFE_RELEASEComPtr(g_pGridIndicesSRV);
 	SAFE_RELEASEComPtr(g_pGridIndicesUAV);
 	SAFE_RELEASEComPtr(g_pGridIndices);
-	
+
+	//constant buffer
+	SAFE_RELEASEComPtr(g_pcbEyePos);
 	// Create the initial particle positions
 	// This is only used to populate the GPU buffers on creation
 	Particle* particles = new Particle[g_iNumParticles];
@@ -250,11 +277,13 @@ HRESULT  FluidPBF::CreateSimulationBuffers()
 	HR(CreateConstantBuffer< CBPlanes >(md3dDevice, g_pcbPlanes.GetAddressOf()));
 	HR(CreateConstantBuffer< CBRenderConstants >(md3dDevice, g_pcbRenderConstants.GetAddressOf()));
 	HR(CreateConstantBuffer< SortCB >(md3dDevice, g_pSortCB.GetAddressOf()));
+	HR(CreateConstantBuffer< CBEyePos >(md3dDevice, g_pcbEyePos.GetAddressOf()));
 
 	D3D11SetDebugObjectName(g_pcbSimulationConstants.Get(), "SimluationCB");
 	D3D11SetDebugObjectName(g_pcbPlanes.Get(), "Planes");
 	D3D11SetDebugObjectName(g_pcbRenderConstants.Get(), "Render");
 	D3D11SetDebugObjectName(g_pSortCB.Get(), "Sort");
+	D3D11SetDebugObjectName(g_pcbEyePos.Get(), "Eyepos");
 	return S_OK;
 }
 
@@ -262,21 +291,16 @@ HRESULT  FluidPBF::CreateSimulationBuffers()
 void  FluidPBF::BuildShader()
 {
 	ID3DBlob* pBlob = NULL;
-	//rendering shaders
-	SafeCompileShaderFromFile(L".\\shader\\Fluid3DRender.hlsl", "ParticleVS", "vs_5_0", &pBlob);
-	HR(md3dDevice->CreateVertexShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL,g_pParticlesVS.GetAddressOf()));
-	D3D11SetDebugObjectName(g_pParticlesVS.Get(), "ParticlesVS");
-	SAFE_RELEASE(pBlob);
-
-	SafeCompileShaderFromFile(L".\\shader\\Fluid3DRender.hlsl", "ParticleGS", "gs_5_0", &pBlob);
-	HR(md3dDevice->CreateGeometryShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesGS.GetAddressOf()));
-	D3D11SetDebugObjectName(g_pParticlesGS.Get(), "ParticlesGS");
-	SAFE_RELEASE(pBlob);
-
-	SafeCompileShaderFromFile(L".\\shader\\Fluid3DRender.hlsl", "ParticlePS", "ps_5_0", &pBlob);
-	HR(md3dDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesPS.GetAddressOf()));
-	D3D11SetDebugObjectName(g_pParticlesPS.Get(), "ParticlesPS");
-	SAFE_RELEASE(pBlob);
+	//rendering shaders in sphere
+	switch (nRenderModel)
+	{
+	case SIM_MODEL_INITIAL:
+		BuildRenderShader(L".\\shader\\Fluid3DRender.hlsl");
+		break;
+	case SIM_MODEL_SPHERE:
+		BuildRenderShader(L".\\shader\\FluidRenderSphere.hlsl");
+		break;
+	}
 
 	// Compute Shaders
 	const char* CSTarget = (md3dDevice->GetFeatureLevel() >= D3D_FEATURE_LEVEL_11_0) ? "cs_5_0" : "cs_4_0";
@@ -438,60 +462,60 @@ void  FluidPBF::GPUSort(ID3D11DeviceContext * pd3dImmediateContext,
 //    Density, Force, Integrate: Perform the normal fluid simulation algorithm
 //        Except now, only calculate particles from the 8 adjacent cells + current cell
 //--------------------------------------------------------------------------------------
-void  FluidPBF::SimulateFluid_Grid(ID3D11DeviceContext* pd3dImmediateContext)
+void  FluidPBF::SimulateFluid_Grid()
 {
 	UINT UAVInitialCounts = 0;
 
 	// Setup
-	pd3dImmediateContext->CSSetConstantBuffers(0, 1, g_pcbSimulationConstants.GetAddressOf());
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, g_pGridUAV.GetAddressOf() , &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(0, 1, g_pParticlesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetConstantBuffers(0, 1, g_pcbSimulationConstants.GetAddressOf());
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, g_pGridUAV.GetAddressOf() , &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(0, 1, g_pParticlesSRV.GetAddressOf());
 
 	// Build Grid
-	pd3dImmediateContext->CSSetShader(g_pBuildGridCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetShader(g_pBuildGridCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 	// Sort Grid
-	GPUSort(pd3dImmediateContext, g_pGridUAV.Get(), g_pGridSRV.Get(), 
+	GPUSort(md3dDeviceContext, g_pGridUAV.Get(), g_pGridSRV.Get(), 
 		g_pGridPingPongUAV.Get(), g_pGridPingPongSRV.Get());
 
 	// Setup
-	pd3dImmediateContext->CSSetConstantBuffers(0, 1, g_pcbSimulationConstants.GetAddressOf());
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, g_pGridIndicesUAV.GetAddressOf(), &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
+	md3dDeviceContext->CSSetConstantBuffers(0, 1, g_pcbSimulationConstants.GetAddressOf());
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, g_pGridIndicesUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
 
 	// Build Grid Indices
-	pd3dImmediateContext->CSSetShader(g_pClearGridIndicesCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(NUM_GRID_INDICES / SIMULATION_BLOCK_SIZE, 1, 1);
-	pd3dImmediateContext->CSSetShader(g_pBuildGridIndicesCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetShader(g_pClearGridIndicesCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(NUM_GRID_INDICES / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetShader(g_pBuildGridIndicesCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 	// Setup
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1,g_pSortedParticlesUAV.GetAddressOf(), &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(0, 1,g_pParticlesSRV.GetAddressOf());
-	pd3dImmediateContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1,g_pSortedParticlesUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(0, 1,g_pParticlesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
 
 	// Rearrange
-	pd3dImmediateContext->CSSetShader(g_pRearrangeParticlesCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetShader(g_pRearrangeParticlesCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 	// Setup
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, &g_pNullUAV, &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(0, 1, &g_pNullSRV);
-	pd3dImmediateContext->CSSetShaderResources(0, 1, g_pSortedParticlesSRV.GetAddressOf());
-	pd3dImmediateContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
-	pd3dImmediateContext->CSSetShaderResources(4, 1, g_pGridIndicesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, &g_pNullUAV, &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetShaderResources(0, 1, g_pSortedParticlesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetShaderResources(3, 1, g_pGridSRV.GetAddressOf());
+	md3dDeviceContext->CSSetShaderResources(4, 1, g_pGridIndicesSRV.GetAddressOf());
 
 	// Density
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, g_pParticleDensityUAV.GetAddressOf(), &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShader(g_pDensity_GridCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, g_pParticleDensityUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShader(g_pDensity_GridCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 	// Force
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1,g_pParticleForcesUAV.GetAddressOf(), &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(1, 1, g_pParticleDensitySRV.GetAddressOf());
-	pd3dImmediateContext->CSSetShader(g_pForce_GridCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1,g_pParticleForcesUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(1, 1, g_pParticleDensitySRV.GetAddressOf());
+	md3dDeviceContext->CSSetShader(g_pForce_GridCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 	// Integrate
 	CBPlanes pData2 = {};
@@ -501,20 +525,20 @@ void  FluidPBF::SimulateFluid_Grid(ID3D11DeviceContext* pd3dImmediateContext)
 	pData2.vPlanes[3] = g_vPlanes2[3];
 	pData2.vPlanes[4] = g_vPlanes2[4];
 	pData2.vPlanes[5] = g_vPlanes2[5];
-	pd3dImmediateContext->UpdateSubresource(g_pcbPlanes.Get(), 0, NULL, &pData2, 0, 0);
-	pd3dImmediateContext->CSSetConstantBuffers(1, 1, g_pcbPlanes.GetAddressOf());
+	md3dDeviceContext->UpdateSubresource(g_pcbPlanes.Get(), 0, NULL, &pData2, 0, 0);
+	md3dDeviceContext->CSSetConstantBuffers(1, 1, g_pcbPlanes.GetAddressOf());
 
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, g_pParticlesUAV.GetAddressOf(), &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(2, 1, g_pParticleForcesSRV.GetAddressOf());
-	pd3dImmediateContext->CSSetShader(g_pIntegrateCS.Get(), NULL, 0);
-	pd3dImmediateContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, g_pParticlesUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(2, 1, g_pParticleForcesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetShader(g_pIntegrateCS.Get(), NULL, 0);
+	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
 }
 
 //--------------------------------------------------------------------------------------
 // GPU Fluid Simulation
 //--------------------------------------------------------------------------------------
-void  FluidPBF::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float fElapsedTime)
+void  FluidPBF::SimulateFluid(float fElapsedTime)
 {
 	UINT UAVInitialCounts = 0;
 
@@ -556,10 +580,10 @@ void  FluidPBF::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float f
 	pData.vGridSize.x = pData.vGridSize.y = pData.vGridSize.z = GRID_SIZE;
 	pData.fParticleRadius = g_fParticleRadius2 * 2;     //the diamater of sphere use for collision later
 
-	pd3dImmediateContext->UpdateSubresource(g_pcbSimulationConstants.Get(), 0, NULL, &pData, 0, 0);
+	md3dDeviceContext->UpdateSubresource(g_pcbSimulationConstants.Get(), 0, NULL, &pData, 0, 0);
 
 
-	SimulateFluid_Grid(pd3dImmediateContext);
+	SimulateFluid_Grid();
 
 	//SimulateFluid_Simple(pd3dImmediateContext);
 	//switch (g_eSimMode) {
@@ -580,12 +604,12 @@ void  FluidPBF::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float f
 	//}
 
 	// Unset
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, &g_pNullUAV, &UAVInitialCounts);
-	pd3dImmediateContext->CSSetShaderResources(0, 1, &g_pNullSRV);
-	pd3dImmediateContext->CSSetShaderResources(1, 1, &g_pNullSRV);
-	pd3dImmediateContext->CSSetShaderResources(2, 1, &g_pNullSRV);
-	pd3dImmediateContext->CSSetShaderResources(3, 1, &g_pNullSRV);
-	pd3dImmediateContext->CSSetShaderResources(4, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, &g_pNullUAV, &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetShaderResources(1, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetShaderResources(2, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetShaderResources(3, 1, &g_pNullSRV);
+	md3dDeviceContext->CSSetShaderResources(4, 1, &g_pNullSRV);
 
 
 }
@@ -593,7 +617,7 @@ void  FluidPBF::SimulateFluid(ID3D11DeviceContext* pd3dImmediateContext, float f
 //--------------------------------------------------------------------------------------
 // GPU Fluid Rendering
 //--------------------------------------------------------------------------------------
-void   FluidPBF::RenderFluid(ID3D11DeviceContext* pd3dImmediateContext, float fElapsedTime)
+void   FluidPBF::RenderFluid(float fElapsedTime)
 {
 	// Simple orthographic projection to display the entire map
 	XMMATRIX view = m_pCamera->GetViewXM(); //XMLoadFloat4x4(&mView);// 
@@ -607,29 +631,32 @@ void   FluidPBF::RenderFluid(ID3D11DeviceContext* pd3dImmediateContext, float fE
 	XMStoreFloat4x4(&pData.mViewProjection, XMMatrixTranspose(mViewProjection));
 	pData.fParticleSize = g_fParticleRenderSize;
 
-	pd3dImmediateContext->UpdateSubresource(g_pcbRenderConstants.Get(), 0, NULL, &pData, 0, 0);
+	md3dDeviceContext->UpdateSubresource(g_pcbRenderConstants.Get(), 0, NULL, &pData, 0, 0);
 
 	// Set the shaders
-	pd3dImmediateContext->VSSetShader(g_pParticlesVS.Get(), NULL, 0);
-	pd3dImmediateContext->GSSetShader(g_pParticlesGS.Get(), NULL, 0);
-	pd3dImmediateContext->PSSetShader(g_pParticlesPS.Get(), NULL, 0);
+	md3dDeviceContext->VSSetShader(g_pParticlesVS.Get(), NULL, 0);
+	md3dDeviceContext->GSSetShader(g_pParticlesGS.Get(), NULL, 0);
+	md3dDeviceContext->PSSetShader(g_pParticlesPS.Get(), NULL, 0);
 
 	// Set the constant buffers
-//	pd3dImmediateContext->VSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
-	pd3dImmediateContext->GSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
+//	md3dDeviceContext->VSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
+	md3dDeviceContext->GSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
+
+	//set diffuse texture
+	//md3dDeviceContext->PSSetShaderResources(2,1,)
 
 	// Setup the particles buffer and IA
-	pd3dImmediateContext->VSSetShaderResources(0, 1, g_pParticlesSRV.GetAddressOf());
-	pd3dImmediateContext->VSSetShaderResources(1, 1, g_pParticleDensitySRV.GetAddressOf());
-	pd3dImmediateContext->IASetVertexBuffers(0, 1, &g_pNullBuffer, &g_iNullUINT, &g_iNullUINT);
-	pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	md3dDeviceContext->VSSetShaderResources(0, 1, g_pParticlesSRV.GetAddressOf());
+	md3dDeviceContext->VSSetShaderResources(1, 1, g_pParticleDensitySRV.GetAddressOf());
+	md3dDeviceContext->IASetVertexBuffers(0, 1, &g_pNullBuffer, &g_iNullUINT, &g_iNullUINT);
+	md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
 	// Draw the mesh
-	pd3dImmediateContext->Draw(g_iNumParticles, 0);
+	md3dDeviceContext->Draw(g_iNumParticles, 0);
 
 	// Unset the particles buffer
-	pd3dImmediateContext->VSSetShaderResources(0, 1, &g_pNullSRV);
-	pd3dImmediateContext->VSSetShaderResources(1, 1, &g_pNullSRV);
+	md3dDeviceContext->VSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->VSSetShaderResources(1, 1, &g_pNullSRV);
 }
 
 void FluidPBF::InitCamera()
@@ -647,6 +674,18 @@ void FluidPBF::InitCamera()
 	camera->SetTarget(target);
 	camera->SetDistance(150.0f);
 	camera->SetDistanceMinMax(10.0f, 200.0f);
+
+	//first camera
+	//m_CameraMode = CameraMode::FirstPerson;
+	//auto camera = std::shared_ptr<FirstPersonCamera>(new FirstPersonCamera);
+	//m_pCamera = camera;
+	//camera->SetViewPort(0.0f, 0.0f, (float)mClientWidth, (float)mClientHeight);
+	//camera->SetPosition(XMFLOAT3(0.0f,0.0f,-150.0f));
+	//camera->SetFrustum(XM_PI / 4, GetAspectRatio(), 1.0f, 1000.0f);
+	//camera->LookTo(
+	//	XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
+	//	XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
+	//	XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 }
 
 void FluidPBF::UpdateCamera(float dt)
@@ -695,15 +734,18 @@ void FluidPBF::UpdateCamera(float dt)
 		//cam1st->SetPosition(adjustedPos);
 
 		// rotation
-		cam1st->Pitch(mouseState.y * dt * 1.25f);
-		cam1st->RotateY(mouseState.x * dt * 1.25f);
+		if (mouseState.rightButton == true && m_MouseTracker.rightButton == m_MouseTracker.HELD)
+		{
+			cam1st->Pitch((mouseState.y - lastMouseState.y) * dt * 1.25f);
+			cam1st->RotateY((mouseState.x - lastMouseState.x) * dt * 1.25f);
+		}
+		
 	}
 	// ThirdPerson camera 
 	else if (m_CameraMode == CameraMode::ThirdPerson)
 	{
-		
 		/// rotation
-		if (mouseState.leftButton == true && m_MouseTracker.leftButton == m_MouseTracker.HELD)
+		if (mouseState.rightButton == true && m_MouseTracker.rightButton == m_MouseTracker.HELD)
 		{
 			cam3rd->RotateX((mouseState.y - lastMouseState.y) * dt * 1.25f);
 			cam3rd->RotateY((mouseState.x - lastMouseState.x) * dt * 1.25f);
@@ -764,4 +806,73 @@ void FluidPBF::UpdateCamera(float dt)
 
 		m_CameraMode = CameraMode::Free;
 	}
+}
+
+void   FluidPBF::RenderFluidInSphere(float fElapsedTime)
+{
+	// Simple orthographic projection to display the entire map
+	XMMATRIX view = m_pCamera->GetViewXM(); //XMLoadFloat4x4(&mView);// 
+	XMMATRIX proj = m_pCamera->GetProjXM();//XMLoadFloat4x4(&mProj);// 
+	XMMATRIX world = XMMatrixIdentity();
+	XMMATRIX mViewProjection = world * view * proj;
+
+	// Update Constants
+	CBRenderConstants pData = {};
+
+	XMStoreFloat4x4(&pData.mViewProjection, XMMatrixTranspose(mViewProjection));
+	pData.fParticleSize = g_fParticleRenderSize;
+
+	md3dDeviceContext->UpdateSubresource(g_pcbRenderConstants.Get(), 0, NULL, &pData, 0, 0);
+
+	CBEyePos pData2 = {};
+	pData2.eyePosW = m_pCamera->GetPosition();
+	pData2.padding = 0.0f;
+	md3dDeviceContext->UpdateSubresource(g_pcbEyePos.Get(), 0, NULL, &pData2, 0, 0);
+
+	// Set the shaders
+	md3dDeviceContext->VSSetShader(g_pParticlesVS.Get(), NULL, 0);
+	md3dDeviceContext->GSSetShader(g_pParticlesGS.Get(), NULL, 0);
+	md3dDeviceContext->PSSetShader(g_pParticlesPS.Get(), NULL, 0);
+
+	// Set the constant buffers
+//	md3dDeviceContext->VSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
+	md3dDeviceContext->GSSetConstantBuffers(0, 1, g_pcbRenderConstants.GetAddressOf());
+	md3dDeviceContext->GSSetConstantBuffers(1, 1, g_pcbEyePos.GetAddressOf());
+
+	md3dDeviceContext->PSSetSamplers(0, 1, RenderStates::SSLinearWrap.GetAddressOf());
+	//set diffuse texture
+	md3dDeviceContext->PSSetShaderResources(2, 1, m_TextureMgr->CreateTexture(".\\Data\\Texture\\sphere.jpg").GetAddressOf());
+
+	// Setup the particles buffer and IA
+	md3dDeviceContext->VSSetShaderResources(0, 1, g_pParticlesSRV.GetAddressOf());
+	md3dDeviceContext->VSSetShaderResources(1, 1, g_pParticleDensitySRV.GetAddressOf());
+	md3dDeviceContext->IASetVertexBuffers(0, 1, &g_pNullBuffer, &g_iNullUINT, &g_iNullUINT);
+	md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	// Draw the mesh
+	md3dDeviceContext->Draw(g_iNumParticles, 0);
+
+	// Unset the particles buffer
+	md3dDeviceContext->VSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->VSSetShaderResources(1, 1, &g_pNullSRV);
+}
+
+void FluidPBF::BuildRenderShader(const WCHAR* fileName)
+{
+	ID3DBlob* pBlob = NULL;
+	
+	SafeCompileShaderFromFile(fileName, "ParticleVS", "vs_5_0", &pBlob);
+	HR(md3dDevice->CreateVertexShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesVS.GetAddressOf()));
+	D3D11SetDebugObjectName(g_pParticlesVS.Get(), "ParticlesVS");
+	SAFE_RELEASE(pBlob);
+
+	SafeCompileShaderFromFile(fileName, "ParticleGS", "gs_5_0", &pBlob);
+	HR(md3dDevice->CreateGeometryShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesGS.GetAddressOf()));
+	D3D11SetDebugObjectName(g_pParticlesGS.Get(), "ParticlesGS");
+	SAFE_RELEASE(pBlob);
+
+	SafeCompileShaderFromFile(fileName, "ParticlePS", "ps_5_0", &pBlob);
+	HR(md3dDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesPS.GetAddressOf()));
+	D3D11SetDebugObjectName(g_pParticlesPS.Get(), "ParticlesPS");
+	SAFE_RELEASE(pBlob);
 }

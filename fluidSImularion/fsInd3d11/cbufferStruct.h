@@ -93,10 +93,12 @@ _DECLSPEC_ALIGN_16_ struct SortCB
 	UINT iHeight;
 };
 
+_DECLSPEC_ALIGN_16_ struct CBEyePos
+{
+	XMFLOAT3 eyePosW;
+	float padding = 0;
+};
 #pragma warning(pop)
-
-
-
 // --------------------------------------------------------------------------------------
 // Helper for creating constant buffers
 //--------------------------------------------------------------------------------------
