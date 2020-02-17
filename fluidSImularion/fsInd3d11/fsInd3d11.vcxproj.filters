@@ -28,6 +28,9 @@
     <Filter Include="core\phf">
       <UniqueIdentifier>{3fe1273e-f774-46e6-8e42-341e006a8e39}</UniqueIdentifier>
     </Filter>
+    <Filter Include="common\objLoad">
+      <UniqueIdentifier>{108e65af-8b70-4e34-aa3a-50c7ce566da5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="common\D3DApp.cpp">
@@ -111,6 +114,18 @@
     </ClCompile>
     <ClCompile Include="SurfaceBuffers.cpp">
       <Filter>core\phf</Filter>
+    </ClCompile>
+    <ClCompile Include="common\objLoad\OBJLoadClass.cpp">
+      <Filter>common\objLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="common\objLoad\ObjModelClass.cpp">
+      <Filter>common\objLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="OrthoWindow.cpp">
+      <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="LightShaderClass.cpp">
+      <Filter>core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -207,6 +222,18 @@
     <ClInclude Include="SurfaceBuffers.h">
       <Filter>core\phf</Filter>
     </ClInclude>
+    <ClInclude Include="common\objLoad\ObjModelClass.h">
+      <Filter>common\objLoad</Filter>
+    </ClInclude>
+    <ClInclude Include="common\objLoad\OBJLoadClass.h">
+      <Filter>common\objLoad</Filter>
+    </ClInclude>
+    <ClInclude Include="OrthoWindow.h">
+      <Filter>core</Filter>
+    </ClInclude>
+    <ClInclude Include="LightShaderClass.h">
+      <Filter>core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\BitonicSortCS.hlsl">
@@ -240,5 +267,13 @@
     <CustomBuild Include="shader\Fog.hlsl">
       <Filter>shader</Filter>
     </CustomBuild>
+    <CustomBuild Include="shader\ObjShader.hlsl">
+      <Filter>shader</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shader\LightShader.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

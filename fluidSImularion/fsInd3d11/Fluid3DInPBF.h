@@ -6,6 +6,9 @@
 #include "common/Camera.h"
 #include "reference/Texture.h"
 #include "SurfaceBuffers.h"
+#include "common/objLoad/OBJLoadClass.h"
+#include "OrthoWindow.h"
+#include "LightShaderClass.h"
 
 enum RenderModel
 {
@@ -41,7 +44,11 @@ private:
 	void RenderFluidInSphere(float fElapsedTime);
 
 	void BuildRenderShader(const WCHAR* fileName);
-
+	
+	bool InitOBJModels();
+	HRESULT CreateOBJBuffers();
+	void BuildOBJShader();
+	bool RenderOBJModel();
 private:
 	//Direct3D11 Grobal variables
 	ID3D11ShaderResourceView* const   g_pNullSRV = NULL;       //helper to clear SRVS
@@ -114,4 +121,20 @@ private:
 	SurfaceBuffers* m_SurfaceBuffers;
 
 	RenderModel nRenderModel;
+
+	//for obj models
+	Microsoft::WRL::ComPtr <ID3D11VertexShader>       g_pObjLoadVS;
+	Microsoft::WRL::ComPtr <ID3D11PixelShader>        g_pObjLoadPS;
+
+	Microsoft::WRL::ComPtr <ID3D11Buffer>                    g_pLight;
+	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView>        g_pLightSRV;
+
+	//Constant Buffers
+	Microsoft::WRL::ComPtr <ID3D11Buffer>   g_pcbMatrix;
+	Microsoft::WRL::ComPtr <ID3D11Buffer>   g_pcbPerFrame;
+	Microsoft::WRL::ComPtr <ID3D11Buffer>   g_pcbMaterial;
+	OBJLoadClass* mObjLoadClass;
+
+	LightShaderClass* m_LightShaderClass;
+	OrthoWindow* m_OrthoWindow;
 };

@@ -80,14 +80,30 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 			return false;
 	}
 
+	DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+	textureDesc.Format = format;
+	hr = device->CreateTexture2D(&textureDesc, NULL, &mLitSceneRenderTargetTexture);
+	if (FAILED(hr))
+		return false;
+
+	renderTargetViewDesc.Format = format;
+	hr = device->CreateRenderTargetView(mLitSceneRenderTargetTexture, &renderTargetViewDesc, &mLitSceneRenderTargetView);
+	if (FAILED(hr))
+		return false;
+
+	shaderResourceViewDesc.Format = format;
+	hr = device->CreateShaderResourceView(mLitSceneRenderTargetTexture, &shaderResourceViewDesc, &mLitSceneShaderResourceView);
+	if (FAILED(hr))
+		return false;
 
 	return true;
 }
 
 void SurfaceBuffers::OnResize(ID3D11Device * device, UINT width, UINT height)
 {
-	Shutdown();
-	Init(device, width, height);
+	//Shutdown();
+	//Init(device, width, height);
 }
 
 void SurfaceBuffers::SetRenderTargets(ID3D11DeviceContext * dc, ID3D11DepthStencilView * depthStencilView)

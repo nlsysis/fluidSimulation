@@ -6,19 +6,24 @@ using namespace Microsoft::WRL;
 ComPtr<ID3D11RasterizerState> RenderStates::RSNoCull = nullptr;
 ComPtr<ID3D11RasterizerState> RenderStates::RSWireframe = nullptr;
 ComPtr<ID3D11RasterizerState> RenderStates::RSCullClockWise = nullptr;
+ComPtr<ID3D11RasterizerState> RenderStates::RSDefault = nullptr;
 
 ComPtr<ID3D11SamplerState> RenderStates::SSAnistropicWrap = nullptr;
 ComPtr<ID3D11SamplerState> RenderStates::SSLinearWrap = nullptr;
+ComPtr<ID3D11SamplerState> RenderStates::SSPointClamped = nullptr;
 
 ComPtr<ID3D11BlendState> RenderStates::BSAlphaToCoverage = nullptr;
 ComPtr<ID3D11BlendState> RenderStates::BSNoColorWrite = nullptr;
 ComPtr<ID3D11BlendState> RenderStates::BSTransparent = nullptr;
+ComPtr<ID3D11BlendState> RenderStates::BSDefault = nullptr;
 
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSWriteStencil = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSDrawWithStencil = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDoubleBlend = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDepthTest = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDepthWrite = nullptr;
+ComPtr<ID3D11DepthStencilState> RenderStates::DSSDepthDisabledStencilUse = nullptr;
+
 
 bool RenderStates::IsInit()
 {
@@ -34,6 +39,22 @@ void RenderStates::InitAll(ID3D11Device * device)
 	// ******************
 	// Init Raster state
 	//
+	// Default rasterizer state
+	D3D11_RASTERIZER_DESC defaultRSdesc;
+	ZeroMemory(&defaultRSdesc, sizeof(D3D11_RASTERIZER_DESC));
+	defaultRSdesc.AntialiasedLineEnable = false;
+	defaultRSdesc.CullMode = D3D11_CULL_BACK;
+	defaultRSdesc.DepthBias = 0;
+	defaultRSdesc.DepthBiasClamp = 0.0f;
+	defaultRSdesc.DepthClipEnable = true;
+	defaultRSdesc.FillMode = D3D11_FILL_SOLID;
+	defaultRSdesc.FrontCounterClockwise = false;
+	defaultRSdesc.MultisampleEnable = false;
+	defaultRSdesc.ScissorEnable = false;
+	defaultRSdesc.SlopeScaledDepthBias = 0.0f;
+
+	device->CreateRasterizerState(&defaultRSdesc, RSDefault.GetAddressOf());
+
 	D3D11_RASTERIZER_DESC rasterizerDesc;
 	ZeroMemory(&rasterizerDesc, sizeof(rasterizerDesc));
 
@@ -85,6 +106,16 @@ void RenderStates::InitAll(ID3D11Device * device)
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	HR(device->CreateSamplerState(&sampDesc, SSAnistropicWrap.GetAddressOf()));
 
+	// Point sampler state
+	D3D11_SAMPLER_DESC pointSSdesc;
+	ZeroMemory(&pointSSdesc, sizeof(D3D11_SAMPLER_DESC));
+	pointSSdesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	pointSSdesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	pointSSdesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	pointSSdesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+
+	device->CreateSamplerState(&pointSSdesc, &SSPointClamped);
+
 	// ******************
 	// Init Blend state
 	//
@@ -126,6 +157,21 @@ void RenderStates::InitAll(ID3D11Device * device)
 	rtDesc.RenderTargetWriteMask = 0;
 	HR(device->CreateBlendState(&blendDesc, BSNoColorWrite.GetAddressOf()));
 
+	// Default blend state
+	D3D11_BLEND_DESC defaultBSdesc;
+	ZeroMemory(&defaultBSdesc, sizeof(D3D11_BLEND_DESC));
+	defaultBSdesc.AlphaToCoverageEnable = FALSE;
+	defaultBSdesc.IndependentBlendEnable = FALSE;
+	defaultBSdesc.RenderTarget[0].BlendEnable = FALSE;
+	defaultBSdesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	defaultBSdesc.RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
+	defaultBSdesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	defaultBSdesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	defaultBSdesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	defaultBSdesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	defaultBSdesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	device->CreateBlendState(&defaultBSdesc, BSDefault.GetAddressOf());
 	// ******************
 	// Init Depth/Stenil state
 	//
@@ -208,5 +254,28 @@ void RenderStates::InitAll(ID3D11Device * device)
 	dsDesc.StencilEnable = false;
 
 	HR(device->CreateDepthStencilState(&dsDesc, DSSNoDepthWrite.GetAddressOf()));
+
+	// Depth disabled, stencil use
+	D3D11_DEPTH_STENCIL_DESC depthDisabledStencilUseDSSdesc;
+	ZeroMemory(&depthDisabledStencilUseDSSdesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	depthDisabledStencilUseDSSdesc.DepthEnable = FALSE;
+	depthDisabledStencilUseDSSdesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthDisabledStencilUseDSSdesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+	depthDisabledStencilUseDSSdesc.StencilEnable = TRUE;
+	depthDisabledStencilUseDSSdesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	depthDisabledStencilUseDSSdesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+
+	depthDisabledStencilUseDSSdesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	depthDisabledStencilUseDSSdesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilUseDSSdesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilUseDSSdesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	depthDisabledStencilUseDSSdesc.BackFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	depthDisabledStencilUseDSSdesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilUseDSSdesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilUseDSSdesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	device->CreateDepthStencilState(&depthDisabledStencilUseDSSdesc,DSSDepthDisabledStencilUse.GetAddressOf());
 
 }

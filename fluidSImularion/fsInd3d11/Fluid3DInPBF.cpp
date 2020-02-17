@@ -73,18 +73,23 @@ XMFLOAT4 g_vPlanes2[6] = {
 	 D3DApp(hInstance), 
 	 m_CameraMode(CameraMode::ThirdPerson),
 	 m_TextureMgr(nullptr),
-	 m_SurfaceBuffers(nullptr)
+	 m_SurfaceBuffers(nullptr),
+	 mObjLoadClass(nullptr)
 
 {
 	mMainWndCaption = L"Fluid 3D Demo";
 	mEnable4xMsaa = false;
 	g_iNullUINT = 0;         //helper to clear buffers
-	nRenderModel = SIM_MODEL_INITIAL;
+	nRenderModel = SIM_MODEL_SPHERE;
 }
 
  FluidPBF::~FluidPBF()
 {
-	
+	 mObjLoadClass->Shutdown();
+	 delete mObjLoadClass;
+
+	 m_OrthoWindow->Shutdown();
+	 delete m_OrthoWindow;
 }
 
 bool  FluidPBF::Init()
@@ -98,10 +103,23 @@ bool  FluidPBF::Init()
 
 	//init surfaceBuffers
 	m_SurfaceBuffers = new SurfaceBuffers();
-	m_SurfaceBuffers->Init(md3dDevice, mClientWidth, mClientHeight);
+	if(!m_SurfaceBuffers->Init(md3dDevice, mClientWidth, mClientHeight))
+		return false;
 
 	CreateSimulationBuffers();
 	BuildShader();
+
+	if(!InitOBJModels()) 
+		return false;
+
+	m_OrthoWindow = new OrthoWindow;
+	if (!m_OrthoWindow->Initialize(md3dDevice, mClientWidth, mClientHeight))
+		return false;
+
+	m_LightShaderClass = new LightShaderClass;
+	if (!m_LightShaderClass->Init(md3dDevice))
+		return false;
+
 	return true;
 }
 
@@ -115,9 +133,12 @@ void  FluidPBF::OnResize()
 		m_pCamera->SetFrustum(XM_PI / 4, GetAspectRatio(), 1.0f, 1000.0f);
 		m_pCamera->SetViewPort(0.0f, 0.0f, (float)mClientWidth, (float)mClientHeight);
 	}
-	if(nRenderModel == SIM_MODEL_SPHERE)
+	if (nRenderModel == SIM_MODEL_SPHERE)
+	{
 		m_SurfaceBuffers->OnResize(md3dDevice, mClientWidth, mClientHeight);
-
+		m_OrthoWindow->OnResize(md3dDevice, mClientWidth, mClientHeight);
+	}
+		
 }
 
 void  FluidPBF::UpdateScene(float dt)
@@ -132,14 +153,29 @@ void  FluidPBF::DrawScene()
 
 void  FluidPBF::DrawScene(float fElapsedTime)
 {
-	
+	md3dDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthStencilView);
 	md3dDeviceContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::Black));
 	md3dDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
+	
 	SimulateFluid(fElapsedTime);
 
+	switch (nRenderModel)
+	{
+	case SIM_MODEL_INITIAL:
+		RenderFluid(fElapsedTime);
+		break;
+	case SIM_MODEL_SPHERE:
+		RenderFluidInSphere(fElapsedTime);
+		ID3D11ShaderResourceView* finalSRV = m_SurfaceBuffers->GetLitSceneSRV();
+		md3dDeviceContext->PSSetShaderResources(0, 1, &finalSRV);
+		m_LightShaderClass->RenderLight(md3dDeviceContext);
+		m_OrthoWindow->Render(md3dDeviceContext);
+
+		md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
+		break;
+	}
 	//RenderFluid(fElapsedTime);
-	RenderFluidInSphere(fElapsedTime);
+	//RenderFluidInSphere(fElapsedTime);
 
 	//imgui stuff
 	ImGui_ImplDX11_NewFrame();
@@ -182,6 +218,9 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 			break;
 		}
 	}
+
+
+	RenderOBJModel();
 	HR(mSwapChain->Present(0, 0));
 
 }
@@ -810,16 +849,31 @@ void FluidPBF::UpdateCamera(float dt)
 
 void   FluidPBF::RenderFluidInSphere(float fElapsedTime)
 {
+	m_SurfaceBuffers->SetRenderTargets(md3dDeviceContext, mDepthStencilView);
+	m_SurfaceBuffers->ClearRenderTargets(md3dDeviceContext, reinterpret_cast<const float*>(&Colors::Black), mDepthStencilView);
+	md3dDeviceContext->ClearRenderTargetView(m_SurfaceBuffers->GetLitSceneRTV(), reinterpret_cast<const float*>(&Colors::White));
+	
+	float blendFactor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	md3dDeviceContext->RSSetState(0);
+	md3dDeviceContext->OMSetDepthStencilState(0, 0);
+	md3dDeviceContext->OMSetBlendState(0, blendFactor, 0xffffffff);
+
+	ID3D11RenderTargetView* renderTargetsLitScene[1] = { m_SurfaceBuffers->GetLitSceneRTV() };
+
+	md3dDeviceContext->OMSetBlendState(RenderStates::BSDefault.Get(), blendFactor, 0xffffffff);
+
+	md3dDeviceContext->RSSetState(RenderStates::RSDefault.Get());
+
 	// Simple orthographic projection to display the entire map
 	XMMATRIX view = m_pCamera->GetViewXM(); //XMLoadFloat4x4(&mView);// 
 	XMMATRIX proj = m_pCamera->GetProjXM();//XMLoadFloat4x4(&mProj);// 
 	XMMATRIX world = XMMatrixIdentity();
 	XMMATRIX mViewProjection = world * view * proj;
-
+	XMMATRIX mvp = XMMatrixTranspose(mViewProjection);
 	// Update Constants
 	CBRenderConstants pData = {};
 
-	XMStoreFloat4x4(&pData.mViewProjection, XMMatrixTranspose(mViewProjection));
+	XMStoreFloat4x4(&pData.mViewProjection, mvp);
 	pData.fParticleSize = g_fParticleRenderSize;
 
 	md3dDeviceContext->UpdateSubresource(g_pcbRenderConstants.Get(), 0, NULL, &pData, 0, 0);
@@ -855,6 +909,36 @@ void   FluidPBF::RenderFluidInSphere(float fElapsedTime)
 	// Unset the particles buffer
 	md3dDeviceContext->VSSetShaderResources(0, 1, &g_pNullSRV);
 	md3dDeviceContext->VSSetShaderResources(1, 1, &g_pNullSRV);
+
+	//render in sphere (Point Sphere)
+	md3dDeviceContext->OMSetRenderTargets(1, renderTargetsLitScene, mDepthStencilView);
+	md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDepthDisabledStencilUse.Get(), 1);
+	XMMATRIX temp = m_pCamera->GetViewProjXM();
+	XMMATRIX CamViewProjInv = XMMatrixInverse(&XMMatrixDeterminant(temp), temp);
+	m_LightShaderClass->SetCBLightBufferPara(mvp, m_pCamera->GetPosition(), true, CamViewProjInv);
+
+	ID3D11ShaderResourceView* tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Diffuse);
+	md3dDeviceContext->PSSetShaderResources(0, 1, &tex);
+	tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Normal);
+	md3dDeviceContext->PSSetShaderResources(1, 1, &tex);
+	md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
+	m_LightShaderClass->RenderLight(md3dDeviceContext);
+	
+	m_OrthoWindow->Render(md3dDeviceContext);
+	// Unset the light buffer
+	md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(1, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(3, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(4, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(5, 1, &g_pNullSRV);
+	
+	md3dDeviceContext->ClearDepthStencilView(mDepthStencilView,  D3D11_CLEAR_STENCIL, 1.0f, 0);
+	md3dDeviceContext->RSSetState(0);
+	md3dDeviceContext->OMSetDepthStencilState(0, 0);
+	md3dDeviceContext->OMSetBlendState(0, blendFactor, 0xffffffff);
+	md3dDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthStencilView);
+
 }
 
 void FluidPBF::BuildRenderShader(const WCHAR* fileName)
@@ -875,4 +959,59 @@ void FluidPBF::BuildRenderShader(const WCHAR* fileName)
 	HR(md3dDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pParticlesPS.GetAddressOf()));
 	D3D11SetDebugObjectName(g_pParticlesPS.Get(), "ParticlesPS");
 	SAFE_RELEASE(pBlob);
+}
+
+bool FluidPBF::InitOBJModels()
+{
+	mObjLoadClass = new OBJLoadClass;
+	bool result = mObjLoadClass->Initialize(md3dDevice,".\\Data\\Model\\untitled.obj");
+	if(FAILED(CreateOBJBuffers()))
+		return false;
+	BuildOBJShader();
+	return result;
+}
+
+HRESULT FluidPBF::CreateOBJBuffers()
+{
+	HRESULT hr = S_OK;
+
+	// Destroy the old buffers in case the number of particles has changed
+	SAFE_RELEASEComPtr(g_pLight);
+	SAFE_RELEASEComPtr(g_pLightSRV);
+
+	SAFE_RELEASEComPtr(g_pcbMatrix);
+	SAFE_RELEASEComPtr(g_pcbPerFrame);
+	SAFE_RELEASEComPtr(g_pcbMaterial);
+
+	HR(CreateStructuredBuffer< DirectionalLight >(md3dDevice, 1, g_pLight.GetAddressOf(), g_pLightSRV.GetAddressOf(), nullptr, NULL));
+	
+	// Create Constant Buffers
+	HR(CreateConstantBuffer< cbMatrix >(md3dDevice, g_pcbMatrix.GetAddressOf()));
+	HR(CreateConstantBuffer< cbMaterial >(md3dDevice, g_pcbMaterial.GetAddressOf()));
+	HR(CreateConstantBuffer< cbPerFrame >(md3dDevice, g_pcbPerFrame.GetAddressOf()));
+	return hr;
+}
+void FluidPBF::BuildOBJShader()
+{
+	ID3DBlob* pBlob = nullptr;
+	SafeCompileShaderFromFile(L".\\shader\\ObjShader.hlsl", "VS", "vs_5_0", &pBlob);
+	HR(md3dDevice->CreateVertexShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pObjLoadVS.GetAddressOf()));
+	D3D11SetDebugObjectName(g_pObjLoadVS.Get(), "RenderTestVS");
+	SAFE_RELEASE(pBlob);
+
+	SafeCompileShaderFromFile(L".\\shader\\ObjShader.hlsl", "PS", "ps_5_0", &pBlob);
+	HR(md3dDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), NULL, g_pObjLoadPS.GetAddressOf()));
+	D3D11SetDebugObjectName(g_pObjLoadPS.Get(), "RenderTestPS");
+	SAFE_RELEASE(pBlob);
+}
+bool FluidPBF::RenderOBJModel()
+{
+	vector<ObjModelClass*> mOBJModelArray;
+	mOBJModelArray = mObjLoadClass->GetOBJModelArrayCopy();
+	for (size_t i = 0; i < mOBJModelArray.size(); ++i)
+	{
+		mOBJModelArray[i]->Render(md3dDeviceContext);
+	}
+
+	return true;
 }

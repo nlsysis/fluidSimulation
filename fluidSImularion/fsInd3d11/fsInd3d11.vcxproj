@@ -139,6 +139,8 @@
     <ClCompile Include="common\ImguiManager.cpp" />
     <ClCompile Include="common\Keyboard.cpp" />
     <ClCompile Include="common\Mouse.cpp" />
+    <ClCompile Include="common\objLoad\OBJLoadClass.cpp" />
+    <ClCompile Include="common\objLoad\ObjModelClass.cpp" />
     <ClCompile Include="common\RenderStates.cpp" />
     <ClCompile Include="Fluid3D.cpp" />
     <ClCompile Include="Fluid3DInPBF.cpp" />
@@ -150,6 +152,8 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="InitDirectx3D.cpp" />
+    <ClCompile Include="LightShaderClass.cpp" />
+    <ClCompile Include="OrthoWindow.cpp" />
     <ClCompile Include="reference\MathHelper.cpp" />
     <ClCompile Include="reference\Texture.cpp" />
     <ClCompile Include="reference\Vertex.cpp" />
@@ -170,6 +174,8 @@
     <ClInclude Include="common\ImguiManager.h" />
     <ClInclude Include="common\Keyboard.h" />
     <ClInclude Include="common\Mouse.h" />
+    <ClInclude Include="common\objLoad\OBJLoadClass.h" />
+    <ClInclude Include="common\objLoad\ObjModelClass.h" />
     <ClInclude Include="common\RenderStates.h" />
     <ClInclude Include="Fluid3D.h" />
     <ClInclude Include="Fluid3DInPBF.h" />
@@ -182,6 +188,8 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="LightShaderClass.h" />
+    <ClInclude Include="OrthoWindow.h" />
     <ClInclude Include="reference\LightHelper.h" />
     <ClInclude Include="reference\MathHelper.h" />
     <ClInclude Include="reference\Texture.h" />
@@ -226,6 +234,16 @@
       <FileType>Document</FileType>
     </CustomBuild>
     <CustomBuild Include="shader\FluidRenderSphere.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\ObjShader.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\LightShader.hlsl">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

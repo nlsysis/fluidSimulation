@@ -174,3 +174,37 @@ HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D
 
 	return hr;
 }
+
+//constant buffer for objModel
+struct cbPerFrame
+{
+	XMFLOAT3 gEyePosW;
+	float padding;
+};
+
+struct cbMaterial
+{
+	Material gMaterial;
+};
+
+struct cbMatrix
+{
+	XMMATRIX mvp;
+	XMMATRIX world;
+	XMMATRIX worldInvTranspose;
+};
+
+
+//constant buffer for light shader
+struct  cbLightBuffer
+{
+	UINT gPointLightCount;
+	UINT gDirLightCount;
+	UINT gSpotLightCount;
+	UINT padding;
+
+	XMFLOAT3 gEyePosW;
+	int gSkipLighting;
+
+	XMMATRIX gCamViewProjInv;
+};
