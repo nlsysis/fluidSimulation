@@ -31,19 +31,24 @@ public:
 	XMMATRIX GetProjXM() const;
 	XMMATRIX GetViewProjXM() const;
 
+	//orthoView / proj matrix
+	XMMATRIX GetBaseViewXM() const;
+	XMMATRIX GetOrthoProjXM() const;
+
 	// get viewport
 	D3D11_VIEWPORT GetViewPort() const;
 
 
 	// setFrustum
 	void SetFrustum(float fovY, float aspect, float nearZ, float farZ);
-
+	void SetOrthoProj(float screenWidth, float screenHeight, float zn, float zf);
 	// setviewport
 	void SetViewPort(const D3D11_VIEWPORT& viewPort);
 	void SetViewPort(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
 
 	// upsate view matrix
 	virtual void UpdateViewMatrix() = 0;
+	void UpdateBaseViewMatrix();
 protected:
 	// camera setting 
 	XMFLOAT3 m_Position;
@@ -62,6 +67,9 @@ protected:
 	// view and projection matrix
 	XMFLOAT4X4 m_View;
 	XMFLOAT4X4 m_Proj;
+
+	XMFLOAT4X4 m_BaseView;
+	XMFLOAT4X4 m_OrthoProj;
 
 	// viewport
 	D3D11_VIEWPORT m_ViewPort;

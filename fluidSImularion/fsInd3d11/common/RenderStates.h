@@ -34,4 +34,5 @@ public:
 	static ComPtr<ID3D11DepthStencilState> DSSNoDepthTest;		// depth/stenilState:FNoDepthTest
 	static ComPtr<ID3D11DepthStencilState> DSSNoDepthWrite;		// depth/stenilState:FNoDepthWrite
 	static ComPtr<ID3D11DepthStencilState> DSSDepthDisabledStencilUse;
+	static ComPtr<ID3D11DepthStencilState> DSSDefault;
 };

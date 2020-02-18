@@ -43,11 +43,11 @@ struct GSParticleOut
 Texture2D diffuseMap : register(t2);
 SamplerState linearSample : register(s0);
 
-struct PixelOut
-{
-    float4 Color : SV_Target0;
-    float4 Normal : SV_Target1;
-};
+//struct PixelOut
+//{
+//    float4 Color : SV_Target0;
+//    float4 Normal : SV_Target1;
+//};
 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
@@ -78,7 +78,7 @@ void ParticleGS(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> S
     for (int i = 0; i < 4; i++)
     {
         GSParticleOut Out = (GSParticleOut) 0;
-        float4 position = float4(In[0].position, 1) + g_fParticleSize * float4(g_positions[i], 0, 0) * float4(right, 1.0f) * float4(up,1.0f);
+        float4 position = float4(In[0].position, 1) + g_fParticleSize * g_positions[i].x * float4(up, 0.0f) + g_fParticleSize * g_positions[i].y * float4(right, 0.0f);
         Out.position = mul(position, g_mViewProjection);
         Out.texcoord = g_texcoords[i];
         SpriteStream.Append(Out);
@@ -89,33 +89,39 @@ void ParticleGS(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> S
 //--------------------------------------------------------------------------------------
 // Pixel Shader
 //--------------------------------------------------------------------------------------
-
-PixelOut ParticlePS(GSParticleOut In)
+float4 ParticlePS(GSParticleOut In) : SV_TARGET
 {
-    PixelOut pOut;
-    
-    pOut.Color = diffuseMap.Sample(linearSample, In.texcoord);
-   // clip(pOut.Color.w-0.05f);
-    clip(pOut.Color.w < 0.9f ? -1 : 1);
-    
-    //calculate eye-space sphere normal from texture coordinates
-    float3 normal = float3(0.0f, 0.0f, 0.0f);
-    normal.xy = In.texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f);
-    float r2 = dot(normal.xy, normal.xy);
-    if (r2 > 1.0f)
-        discard;                //kill pixel outside circle
-    
-    //calculate depth
-    //float4 pixelPos = float4((eyePosW + normal * g_fParticleSize), 1.0f);
-    //float4 clipSpacePos = mul(pixelPos, g_mViewProjection);
-    //float fragDepth = clipSpacePos.z / clipSpacePos.w;
-    
-    //float diffuse = max(0.0, dot(normal, lightDir));
-    //float4 = diffuse * color;
-    
-    normal.z = sqrt(1.0 - r2);
-    pOut.Normal = float4(normal, 1.0f);
-   
-    return pOut;
+    float4 finalColor;
+    finalColor = diffuseMap.Sample(linearSample, In.texcoord);
+    clip(finalColor.w < 0.9f ? -1 : 1);
+    return finalColor;
 }
+//PixelOut ParticlePS(GSParticleOut In)
+//{
+//    PixelOut pOut;
+    
+//    pOut.Color = diffuseMap.Sample(linearSample, In.texcoord);
+
+//    clip(pOut.Color.w < 0.9f ? -1 : 1);
+    
+//    //calculate eye-space sphere normal from texture coordinates
+//    float3 normal = float3(0.0f, 0.0f, 0.0f);
+//    normal.xy = In.texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f);
+//    float r2 = dot(normal.xy, normal.xy);
+//    if (r2 > 1.0f)
+//        discard; //kill pixel outside circle
+    
+//    normal.z = sqrt(1.0 - r2);
+//    pOut.Normal = float4(normal, 1.0f);
+//    //pOut.Color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+//    //pOut.Normal = float4(1.0f, 1.0f, 1.0f, 1.0f);
+//    //calculate depth
+//    //float4 pixelPos = float4((eyePosW + normal * g_fParticleSize), 1.0f);
+//    //float4 clipSpacePos = mul(pixelPos, g_mViewProjection);
+//    //float fragDepth = clipSpacePos.z / clipSpacePos.w;
+    
+//    //float diffuse = max(0.0, dot(normal, lightDir));
+//    //float4 = diffuse * color;
+//    return pOut;
+//}
 

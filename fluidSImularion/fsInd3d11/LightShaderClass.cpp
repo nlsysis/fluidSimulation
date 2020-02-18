@@ -71,11 +71,11 @@ void LightShaderClass::BuildShader(ID3D11Device* device)
 	//create InputLayout
 	const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
 	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	{ "TEXCOORD0", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 	unsigned int numElements = sizeof(vertexDesc) / sizeof(vertexDesc[0]);
 	device->CreateInputLayout(vertexDesc, numElements, pBlob->GetBufferPointer(),
-		pBlob->GetBufferSize(), &mInputLayout);
+		pBlob->GetBufferSize(), mInputLayout.GetAddressOf());
 
 	SAFE_RELEASE(pBlob);
 
@@ -114,12 +114,15 @@ void LightShaderClass::SetLightParameters(ID3D11DeviceContext* deviceContext)
 	deviceContext->UpdateSubresource(g_pcbMatrixBufferType.Get(), 0, NULL, &m_matrixBufferType, 0, 0);
 	deviceContext->UpdateSubresource(g_pcbLightBuffer.Get(), 0, NULL, &m_lightBuffer, 0, 0);
 
+	deviceContext->VSSetConstantBuffers(0, 1, g_pcbMatrixBufferType.GetAddressOf());
+	deviceContext->PSSetConstantBuffers(1, 1, g_pcbLightBuffer.GetAddressOf());
+
 	deviceContext->PSSetShaderResources(3, 1, DirLightResourceView.GetAddressOf());
 	deviceContext->PSSetShaderResources(4, 1, PointLightResourceView.GetAddressOf());
 	deviceContext->PSSetShaderResources(5, 1, SpotLightResourceView.GetAddressOf());
 
-	deviceContext->PSSetSamplers(0, 1, &RenderStates::SSLinearWrap);
-	deviceContext->PSSetSamplers(1, 1, &RenderStates::SSPointClamped);
+	deviceContext->PSSetSamplers(0, 1, RenderStates::SSLinearWrap.GetAddressOf());
+	deviceContext->PSSetSamplers(1, 1, RenderStates::SSPointClamped.GetAddressOf());
 }
 
 void LightShaderClass::SafeCompileShaderFromFile(const WCHAR * fileName, LPCSTR enterPoint, LPCSTR shaderModel, ID3DBlob ** ppBlob)

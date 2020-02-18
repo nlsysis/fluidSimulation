@@ -23,7 +23,7 @@ ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDoubleBlend = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDepthTest = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSNoDepthWrite = nullptr;
 ComPtr<ID3D11DepthStencilState> RenderStates::DSSDepthDisabledStencilUse = nullptr;
-
+ComPtr<ID3D11DepthStencilState> RenderStates::DSSDefault = nullptr;
 
 bool RenderStates::IsInit()
 {
@@ -278,4 +278,23 @@ void RenderStates::InitAll(ID3D11Device * device)
 
 	device->CreateDepthStencilState(&depthDisabledStencilUseDSSdesc,DSSDepthDisabledStencilUse.GetAddressOf());
 
+	// Less equal depth stencil state
+	D3D11_DEPTH_STENCIL_DESC defaultDSSdesc;
+	ZeroMemory(&defaultDSSdesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	defaultDSSdesc.DepthEnable = TRUE;
+	defaultDSSdesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	defaultDSSdesc.DepthFunc = D3D11_COMPARISON_LESS;
+	defaultDSSdesc.StencilEnable = FALSE;
+	defaultDSSdesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	defaultDSSdesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+	defaultDSSdesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	defaultDSSdesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	defaultDSSdesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	defaultDSSdesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	defaultDSSdesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	defaultDSSdesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	defaultDSSdesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	defaultDSSdesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	device->CreateDepthStencilState(&defaultDSSdesc, DSSDefault.GetAddressOf());
 }

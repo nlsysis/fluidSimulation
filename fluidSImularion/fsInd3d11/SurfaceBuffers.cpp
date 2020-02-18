@@ -2,7 +2,7 @@
 
 SurfaceBuffers::SurfaceBuffers()
 {
-	for (UINT i = 0; i < SurfaceBuffersIndex::Count; ++i)
+	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		mRenderTargetTextureArray[i] = 0;
 		mRenderTargetViewArray[i] = 0;
@@ -41,11 +41,11 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	textureDesc.MiscFlags = 0;
 
 	//create the render target texture
-	for (UINT i = 0; i < SurfaceBuffersIndex::Count; ++i)
+	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		textureDesc.Format = formats[i];
 		hr = device->CreateTexture2D(&textureDesc, NULL, &mRenderTargetTextureArray[i]);
-
+		D3D11SetDebugObjectName(mRenderTargetTextureArray[i], "DeferredTTA");
 		if (FAILED(hr))
 			return false;
 	}
@@ -56,11 +56,11 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
 
 	//create renderTargetView
-	for (UINT i = 0; i < SurfaceBuffersIndex::Count; ++i)
+	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		renderTargetViewDesc.Format = formats[i];
 		hr = device->CreateRenderTargetView(mRenderTargetTextureArray[i], &renderTargetViewDesc, &mRenderTargetViewArray[i]);
-
+		D3D11SetDebugObjectName(mRenderTargetViewArray[i], "DeferredRTVA");
 		if (FAILED(hr))
 			return false;
 	}
@@ -71,11 +71,11 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
-	for (UINT i = 0; i < SurfaceBuffersIndex::Count; ++i)
+	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		shaderResourceViewDesc.Format = formats[i];
 		hr = device->CreateShaderResourceView(mRenderTargetTextureArray[i], &shaderResourceViewDesc, &mShaderResourceViewArray[i]);
-
+		D3D11SetDebugObjectName(mRenderTargetViewArray[i], "DeferredSRVA");
 		if (FAILED(hr))
 			return false;
 	}
@@ -120,10 +120,11 @@ void SurfaceBuffers::ClearRenderTargets(ID3D11DeviceContext * dc, XMFLOAT4 RGBA,
 	color[2] = RGBA.z;
 	color[3] = RGBA.w;
 
-	for (UINT i = 0; i < SurfaceBuffersIndex::Count; ++i)
+	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		dc->ClearRenderTargetView(mRenderTargetViewArray[i], color);
 	}
+	dc->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 ID3D11RenderTargetView * SurfaceBuffers::GetRenderTarget(UINT bufferIndex)

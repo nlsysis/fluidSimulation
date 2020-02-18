@@ -15,7 +15,8 @@ enum RenderModel
 	SIM_MODEL_INITIAL = 0,
 	SIM_MODEL_SPHERE,
 	SIM_MODEL_LIGHT,
-	SIM_MODEL_WATER
+	SIM_MODEL_WATER,
+	SIM_MODEL_SIMPLE
 };
 
 class FluidPBF : public D3DApp
@@ -36,12 +37,14 @@ private:
 	void GPUSort(ID3D11DeviceContext* pd3dImmediateContext,
 		ID3D11UnorderedAccessView* inUAV, ID3D11ShaderResourceView* inSRV,
 		ID3D11UnorderedAccessView* tempUAV, ID3D11ShaderResourceView* tempSRV);
+	void SimulateFluid_Simple();
 	void SimulateFluid_Grid();
 	void SimulateFluid(float fElapsedTime);
 	void RenderFluid(float fElapsedTime);
 	void InitCamera();
 	void UpdateCamera(float dt);
 	void RenderFluidInSphere(float fElapsedTime);
+	void RenderFluidInLight(float fElapsedTime);
 
 	void BuildRenderShader(const WCHAR* fileName);
 	

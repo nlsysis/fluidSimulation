@@ -89,6 +89,16 @@ XMMATRIX Camera::GetViewProjXM() const
 	return XMLoadFloat4x4(&m_View) * XMLoadFloat4x4(&m_Proj);
 }
 
+XMMATRIX Camera::GetBaseViewXM() const
+{
+	return XMLoadFloat4x4(&m_BaseView);
+}
+
+XMMATRIX Camera::GetOrthoProjXM() const
+{
+	return XMLoadFloat4x4(&m_OrthoProj);
+}
+
 D3D11_VIEWPORT Camera::GetViewPort() const
 {
 	return m_ViewPort;
@@ -107,6 +117,12 @@ void Camera::SetFrustum(float fovY, float aspect, float nearZ, float farZ)
 	XMStoreFloat4x4(&m_Proj, XMMatrixPerspectiveFovLH(m_FovY, m_Aspect, m_NearZ, m_FarZ));
 }
 
+void Camera::SetOrthoProj(float screenWidth, float screenHeight, float zn, float zf)
+{
+	XMMATRIX orthographicProj = XMMatrixOrthographicLH(screenWidth, screenHeight, zn, zf);
+	XMStoreFloat4x4(&m_OrthoProj, orthographicProj);
+}
+
 void Camera::SetViewPort(const D3D11_VIEWPORT & viewPort)
 {
 	m_ViewPort = viewPort;
@@ -120,6 +136,16 @@ void Camera::SetViewPort(float topLeftX, float topLeftY, float width, float heig
 	m_ViewPort.Height = height;
 	m_ViewPort.MinDepth = minDepth;
 	m_ViewPort.MaxDepth = maxDepth;
+}
+
+void Camera::UpdateBaseViewMatrix()
+{
+	XMVECTOR lookat = XMLoadFloat3(&XMFLOAT3(0.0f, 0.0f, 1.0f));
+	XMVECTOR up = XMLoadFloat3(&XMFLOAT3(0.0f, 1.0f, 0.0f));
+	XMVECTOR position = XMLoadFloat3(&m_Position);
+
+	XMMATRIX view = XMMatrixLookAtLH(position, lookat, up);// D3DXToRadian(degrees));
+	XMStoreFloat4x4(&m_BaseView, view);
 }
 
 
@@ -255,6 +281,7 @@ void FirstPersonCamera::UpdateViewMatrix()
 		m_Right.z, m_Up.z, m_Look.z, 0.0f,
 		x, y, z, 1.0f
 	};
+	UpdateBaseViewMatrix();
 }
 
 // ******************
@@ -371,5 +398,6 @@ void ThirdPersonCamera::UpdateViewMatrix()
 		m_Right.z, m_Up.z, m_Look.z, 0.0f,
 		-XMVectorGetX(XMVector3Dot(P, R)), -XMVectorGetX(XMVector3Dot(P, U)), -XMVectorGetX(XMVector3Dot(P, L)), 1.0f
 	};
+	UpdateBaseViewMatrix();
 }
 

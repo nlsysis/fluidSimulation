@@ -36,7 +36,7 @@ Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> TextureManager::CreateTexture(s
 		HRESULT hr;
 
 		// Try loading the texture as dds
-		hr = D3DX11CreateShaderResourceViewFromFile(md3dDevice.Get(), path.c_str(), nullptr, nullptr,&srv,nullptr);
+		hr = D3DX11CreateShaderResourceViewFromFile(md3dDevice.Get(), path.c_str(), nullptr, nullptr,srv.GetAddressOf(),nullptr);
 
 		// Texture loading still failed, format either unsupported or file doesn't exist
 		if (srv == NULL || FAILED(hr))
