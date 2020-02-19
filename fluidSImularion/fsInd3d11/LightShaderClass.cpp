@@ -61,6 +61,13 @@ void LightShaderClass::SetCBLightBufferPara(XMMATRIX mvp, XMFLOAT3 eyePosW, bool
 	m_lightBuffer.gCamViewProjInv = camViewProjInv;
 }
 
+void LightShaderClass::SetLight(ID3D11DeviceContext * deviceContext)
+{
+	deviceContext->PSSetShaderResources(3, 1, DirLightResourceView.GetAddressOf());
+	deviceContext->PSSetShaderResources(4, 1, PointLightResourceView.GetAddressOf());
+	deviceContext->PSSetShaderResources(5, 1, SpotLightResourceView.GetAddressOf());
+}
+
 void LightShaderClass::BuildShader(ID3D11Device* device)
 {
 	ID3DBlob* pBlob = NULL;
@@ -116,10 +123,6 @@ void LightShaderClass::SetLightParameters(ID3D11DeviceContext* deviceContext)
 
 	deviceContext->VSSetConstantBuffers(0, 1, g_pcbMatrixBufferType.GetAddressOf());
 	deviceContext->PSSetConstantBuffers(1, 1, g_pcbLightBuffer.GetAddressOf());
-
-	deviceContext->PSSetShaderResources(3, 1, DirLightResourceView.GetAddressOf());
-	deviceContext->PSSetShaderResources(4, 1, PointLightResourceView.GetAddressOf());
-	deviceContext->PSSetShaderResources(5, 1, SpotLightResourceView.GetAddressOf());
 
 	deviceContext->PSSetSamplers(0, 1, RenderStates::SSLinearWrap.GetAddressOf());
 	deviceContext->PSSetSamplers(1, 1, RenderStates::SSPointClamped.GetAddressOf());

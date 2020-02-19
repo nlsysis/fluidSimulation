@@ -176,7 +176,6 @@ void OrthoWindow::ShutdownBuffers()
 {
 	ReleaseCOM(mIndexBuffer);
 	ReleaseCOM(mVertexBuffer);
-
 	return;
 }
 
@@ -204,6 +203,6 @@ void OrthoWindow::PrepareBuffers(ID3D11DeviceContext* deviceContext)
 
 void OrthoWindow::OnResize(ID3D11Device* device, int width, int height)
 {
-	//ShutdownBuffers();
-	//InitializeBuffers(device, width, height);
+	ShutdownBuffers();
+	InitializeBuffers(device, width, height);
 }

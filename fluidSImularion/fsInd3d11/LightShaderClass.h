@@ -15,6 +15,7 @@ public:
 	void UpdateScene(float dt);
 	void RenderLight(ID3D11DeviceContext* deviceContext);
 	void SetCBLightBufferPara(XMMATRIX mvp, XMFLOAT3 eyePosW, bool skipLighting, XMMATRIX camViewProjInv);
+	void SetLight(ID3D11DeviceContext* deviceContext);
 private:
 	void BuildShader(ID3D11Device* device);
 	void SetLightParameters(ID3D11DeviceContext* deviceContext);

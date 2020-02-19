@@ -13,10 +13,19 @@
 enum RenderModel
 {
 	SIM_MODEL_INITIAL = 0,
+	SIM_MODEL_SPHERENormal,
 	SIM_MODEL_SPHERE,
 	SIM_MODEL_LIGHT,
 	SIM_MODEL_WATER,
 	SIM_MODEL_SIMPLE
+};
+
+enum ParticleNum
+{
+	PARTICLES_8K = 0,
+	PARTICLES_16K,
+	PARTICLES_32K,
+	PARTICLES_64K
 };
 
 class FluidPBF : public D3DApp
@@ -52,6 +61,7 @@ private:
 	HRESULT CreateOBJBuffers();
 	void BuildOBJShader();
 	bool RenderOBJModel();
+	void ReInit();
 private:
 	//Direct3D11 Grobal variables
 	ID3D11ShaderResourceView* const   g_pNullSRV = NULL;       //helper to clear SRVS
@@ -124,6 +134,7 @@ private:
 	SurfaceBuffers* m_SurfaceBuffers;
 
 	RenderModel nRenderModel;
+	ParticleNum nParticleNum;
 
 	//for obj models
 	Microsoft::WRL::ComPtr <ID3D11VertexShader>       g_pObjLoadVS;

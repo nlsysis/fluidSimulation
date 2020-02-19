@@ -4,9 +4,9 @@ SurfaceBuffers::SurfaceBuffers()
 {
 	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
-		mRenderTargetTextureArray[i] = 0;
-		mRenderTargetViewArray[i] = 0;
-		mShaderResourceViewArray[i] = 0;
+		mRenderTargetTextureArray[i] = nullptr;
+		mRenderTargetViewArray[i] = nullptr;
+		mShaderResourceViewArray[i] = nullptr;
 	}
 }
 
@@ -102,8 +102,8 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 
 void SurfaceBuffers::OnResize(ID3D11Device * device, UINT width, UINT height)
 {
-	//Shutdown();
-	//Init(device, width, height);
+	Shutdown();
+	Init(device, width, height);
 }
 
 void SurfaceBuffers::SetRenderTargets(ID3D11DeviceContext * dc, ID3D11DepthStencilView * depthStencilView)
@@ -124,7 +124,7 @@ void SurfaceBuffers::ClearRenderTargets(ID3D11DeviceContext * dc, XMFLOAT4 RGBA,
 	{
 		dc->ClearRenderTargetView(mRenderTargetViewArray[i], color);
 	}
-	dc->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	//dc->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 ID3D11RenderTargetView * SurfaceBuffers::GetRenderTarget(UINT bufferIndex)
@@ -171,20 +171,11 @@ void SurfaceBuffers::Shutdown()
 {
 	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
-		if (mShaderResourceViewArray[i])
-		{
-			ReleaseCOM(mShaderResourceViewArray[i]);
-		}
-
-		if (mRenderTargetViewArray[i])
-		{
-			ReleaseCOM(mRenderTargetViewArray[i]);
-		}
-
-		if (mRenderTargetTextureArray[i])
-		{
-			ReleaseCOM(mRenderTargetTextureArray[i]);
-		}
+		
+		ReleaseCOM(mShaderResourceViewArray[i]);
+		ReleaseCOM(mRenderTargetViewArray[i]);
+		ReleaseCOM(mRenderTargetTextureArray[i]);
+	
 	}
 
 	ReleaseCOM(mLitSceneRenderTargetTexture);

@@ -270,9 +270,10 @@
     <CustomBuild Include="shader\ObjShader.hlsl">
       <Filter>shader</Filter>
     </CustomBuild>
+    <CustomBuild Include="shader\LightShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shader\LightShader.hlsl">
+    <FxCompile Include="shader\RenderFluidInLight.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
   </ItemGroup>

@@ -32,41 +32,22 @@ cbuffer cbEye : register(b1)
 struct VSParticleOut
 {
     float3 position : POSITION;
-    float4 color : COLOR;
 };
 
 struct GSParticleOut
 {
     float4 position : SV_Position;
-    float4 color : COLOR;
     float2 texcoord : TEXCOORD;
 };
 
 Texture2D diffuseMap : register(t2);
 SamplerState linearSample : register(s0);
 
-//--------------------------------------------------------------------------------------
-// Visualization Helper
-//--------------------------------------------------------------------------------------
-
-static const float4 Rainbow[5] =
+struct PixelOut
 {
-    float4(1, 0, 0, 1), // red
-    float4(1, 1, 0, 1), // orange
-    float4(0, 1, 0, 1), // green
-    float4(0, 1, 1, 1), // teal
-    float4(0, 0, 1, 1), // blue
+    float4 Color : SV_Target0;
+    float4 Normal : SV_Target1;
 };
-
-float4 VisualizeNumber(float n)
-{
-    return lerp(Rainbow[floor(n * 4.0f)], Rainbow[ceil(n * 4.0f)], frac(n * 4.0f));
-}
-
-float4 VisualizeNumber(float n, float lower, float upper)
-{
-    return VisualizeNumber(saturate((n - lower) / (upper - lower)));
-}
 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
@@ -75,7 +56,6 @@ VSParticleOut ParticleVS(uint ID : SV_VertexID)
 {
     VSParticleOut Out = (VSParticleOut) 0;
     Out.position = ParticlesRO[ID].position;
-    Out.color = VisualizeNumber(ParticleDensityRO[ID].density, 0.01f, 1.3f);
     return Out;
 }
 
@@ -100,7 +80,6 @@ void ParticleGS(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> S
         GSParticleOut Out = (GSParticleOut) 0;
         float4 position = float4(In[0].position, 1) + g_fParticleSize * g_positions[i].x * float4(up, 0.0f) + g_fParticleSize * g_positions[i].y * float4(right, 0.0f);
         Out.position = mul(position, g_mViewProjection);
-        Out.color = In[0].color;
         Out.texcoord = g_texcoords[i];
         SpriteStream.Append(Out);
     }
@@ -110,11 +89,14 @@ void ParticleGS(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> S
 //--------------------------------------------------------------------------------------
 // Pixel Shader
 //--------------------------------------------------------------------------------------
-float4 ParticlePS(GSParticleOut In) : SV_TARGET
+PixelOut ParticlePS(GSParticleOut In)
 {
-    float4 finalColor;
-    finalColor = diffuseMap.Sample(linearSample, In.texcoord);
-    clip(finalColor.w < 0.9f ? -1 : 1);
+    PixelOut pOut;
+    
+    pOut.Color = diffuseMap.Sample(linearSample, In.texcoord);
+
+    clip(pOut.Color.w < 0.9f ? -1 : 1);
+    
     //calculate eye-space sphere normal from texture coordinates
     float3 normal = float3(0.0f, 0.0f, 0.0f);
     normal.xy = In.texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f);
@@ -122,7 +104,17 @@ float4 ParticlePS(GSParticleOut In) : SV_TARGET
     if (r2 > 1.0f)
         discard; //kill pixel outside circle
     
-    finalColor.xyz = In.color.xyz * finalColor.xyz;
-    return finalColor;
+    normal.z = sqrt(1.0 - r2);
+    pOut.Normal = float4(normal, 1.0f);
+    //pOut.Color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+    //pOut.Normal = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    //calculate depth
+    //float4 pixelPos = float4((eyePosW + normal * g_fParticleSize), 1.0f);
+    //float4 clipSpacePos = mul(pixelPos, g_mViewProjection);
+    //float fragDepth = clipSpacePos.z / clipSpacePos.w;
+    
+    //float diffuse = max(0.0, dot(normal, lightDir));
+    //float4 = diffuse * color;
+    return pOut;
 }
 

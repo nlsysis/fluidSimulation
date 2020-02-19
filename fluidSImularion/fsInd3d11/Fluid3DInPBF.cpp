@@ -24,7 +24,7 @@ const UINT NUM_PARTICLES_8K = 8 * 1024;
 const UINT NUM_PARTICLES_16K = 16 * 1024;
 const UINT NUM_PARTICLES_32K = 32 * 1024;
 const UINT NUM_PARTICLES_64K = 64 * 1024;
-UINT g_iNumParticles = NUM_PARTICLES_16K;   //default use particle number
+UINT g_iNumParticles = NUM_PARTICLES_8K;   //default use particle number
 
 //Particle Properties
 float g_fSmoothlen = 2.0f;                  //for test
@@ -76,13 +76,14 @@ XMFLOAT4 g_vPlanes2[6] = {
 	 m_CameraMode(CameraMode::ThirdPerson),
 	 m_TextureMgr(nullptr),
 	 m_SurfaceBuffers(nullptr),
-	 mObjLoadClass(nullptr)
+	 mObjLoadClass(nullptr),
+	 nParticleNum(PARTICLES_8K)
 
 {
 	mMainWndCaption = L"Fluid 3D Demo";
 	mEnable4xMsaa = false;
 	g_iNullUINT = 0;         //helper to clear buffers
-	nRenderModel = SIM_MODEL_SPHERE;
+	nRenderModel = SIM_MODEL_LIGHT;
 }
 
  FluidPBF::~FluidPBF()
@@ -126,6 +127,19 @@ bool  FluidPBF::Init()
 	return true;
 }
 
+void FluidPBF::ReInit()
+{
+	m_TextureMgr = new TextureManager();
+	m_TextureMgr->Init(md3dDevice, md3dDeviceContext);
+
+	//init surfaceBuffers
+	m_SurfaceBuffers = new SurfaceBuffers();
+	CreateSimulationBuffers();
+	BuildShader();
+	m_OrthoWindow = new OrthoWindow;
+	m_LightShaderClass = new LightShaderClass;
+	RenderStates::InitAll(md3dDevice);
+}
 void  FluidPBF::OnResize()
 {
 	D3DApp::OnResize();
@@ -139,7 +153,9 @@ void  FluidPBF::OnResize()
 	}
 	if (nRenderModel == SIM_MODEL_SPHERE)
 	{
+		m_SurfaceBuffers = new SurfaceBuffers();
 		m_SurfaceBuffers->OnResize(md3dDevice, mClientWidth, mClientHeight);
+		m_OrthoWindow = new OrthoWindow;
 		m_OrthoWindow->OnResize(md3dDevice, mClientWidth, mClientHeight);
 	}
 		
@@ -169,13 +185,24 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 		SimulateFluid_Grid();
 		RenderFluid(fElapsedTime);
 		break;
-	case SIM_MODEL_SIMPLE:
-		SimulateFluid_Simple();
-		RenderFluid(fElapsedTime);
-		break;
 	case SIM_MODEL_SPHERE:
 		SimulateFluid_Grid();
 		RenderFluidInSphere(fElapsedTime);
+		break;
+	case SIM_MODEL_SPHERENormal:
+		SimulateFluid_Grid();
+		RenderFluidInSphere(fElapsedTime);
+		break;
+	case SIM_MODEL_LIGHT:
+		SimulateFluid_Grid();
+		RenderFluidInLight(fElapsedTime);
+		break;
+	case SIM_MODEL_WATER:
+		SimulateFluid_Grid();
+		break;
+	case SIM_MODEL_SIMPLE:
+		SimulateFluid_Simple();
+		RenderFluid(fElapsedTime);
 		break;
 	}
 	//RenderFluid(fElapsedTime);
@@ -200,10 +227,14 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 
 	}
 
-	const char* listbox_items[] = { "SIM_MODEL_INITIAL", "SIM_MODEL_SPHERE","SIM_MODEL_LIGHT","SIM_MODEL_WATER","SIM_MODEL_SIMPLE"};
+	const char* listbox_items[] = { "SIM_MODEL_INITIAL", "SIM_MODEL_SPHERENormal","SIM_MODEL_SPHERE","SIM_MODEL_LIGHT","SIM_MODEL_WATER","SIM_MODEL_SIMPLE"};
 	static int selectedItem = nRenderModel;
 	ImGui::Combo("Simulationodel)", &selectedItem, listbox_items, IM_ARRAYSIZE(listbox_items));
 	
+	const char* listbox_items2[] = { "NUM_PARTICLES_8K", "NUM_PARTICLES_16K","NUM_PARTICLES_32K","NUM_PARTICLES_64K"};
+	static int selectedItem2 = nParticleNum;
+	ImGui::Combo("Particle Num)", &selectedItem2, listbox_items2, IM_ARRAYSIZE(listbox_items2));
+
 	ImGui::End();
 
 	ImGui::Render();
@@ -220,10 +251,37 @@ void  FluidPBF::DrawScene(float fElapsedTime)
 		case SIM_MODEL_SPHERE:
 			BuildRenderShader(L".\\shader\\FluidRenderSphere.hlsl");
 			break;
+		case SIM_MODEL_SPHERENormal:
+			BuildRenderShader(L".\\shader\\RenderFluidInLight.hlsl");
+			break;
+		case SIM_MODEL_LIGHT:
+			BuildRenderShader(L".\\shader\\RenderFluidInLight.hlsl");
+			break;
 		case SIM_MODEL_SIMPLE:
 			BuildRenderShader(L".\\shader\\Fluid3DRender.hlsl");
 			break;
 		}
+	}
+
+	if(nParticleNum != (ParticleNum)selectedItem2)
+	{
+		nParticleNum = (ParticleNum)selectedItem2;
+		switch (nParticleNum)
+		{
+		case PARTICLES_8K:
+			g_iNumParticles = NUM_PARTICLES_8K;
+			break;
+		case PARTICLES_16K:
+			g_iNumParticles = NUM_PARTICLES_16K;
+			break;
+		case PARTICLES_32K:
+			g_iNumParticles = NUM_PARTICLES_32K;
+			break;
+		case PARTICLES_64K:
+			g_iNumParticles = NUM_PARTICLES_64K;
+			break;
+		}
+		ReInit();
 	}
 
 
@@ -532,9 +590,9 @@ void FluidPBF::SimulateFluid_Simple()
 	md3dDeviceContext->CSSetConstantBuffers(0, 1, g_pcbSimulationConstants.GetAddressOf());
 
 	md3dDeviceContext->CopyResource(g_pSortedParticles.Get(), g_pParticles.Get());
-	md3dDeviceContext->CSSetShaderResources(0, 1, &g_pSortedParticlesSRV);
-	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, &g_pParticlesUAV, &UAVInitialCounts);
-	md3dDeviceContext->CSSetShaderResources(2, 1, &g_pParticleForcesSRV);
+	md3dDeviceContext->CSSetShaderResources(0, 1, g_pSortedParticlesSRV.GetAddressOf());
+	md3dDeviceContext->CSSetUnorderedAccessViews(0, 1, g_pParticlesUAV.GetAddressOf(), &UAVInitialCounts);
+	md3dDeviceContext->CSSetShaderResources(2, 1, g_pParticleForcesSRV.GetAddressOf());
 	md3dDeviceContext->CSSetShader(g_pIntegrateCS.Get(), NULL, 0);
 	md3dDeviceContext->Dispatch(g_iNumParticles / SIMULATION_BLOCK_SIZE, 1, 1);
 
@@ -543,8 +601,6 @@ void FluidPBF::SimulateFluid_Simple()
 	md3dDeviceContext->CSSetShaderResources(0, 1, &g_pNullSRV);
 	md3dDeviceContext->CSSetShaderResources(1, 1, &g_pNullSRV);
 	md3dDeviceContext->CSSetShaderResources(2, 1, &g_pNullSRV);
-	md3dDeviceContext->CSSetShaderResources(3, 1, &g_pNullSRV);
-	md3dDeviceContext->CSSetShaderResources(4, 1, &g_pNullSRV);
 }
 
 //--------------------------------------------------------------------------------------
@@ -771,7 +827,7 @@ void FluidPBF::InitCamera()
 	XMFLOAT3 target =XMFLOAT3(0.0f,0.0f,0.0f);
 	camera->SetTarget(target);
 	camera->SetDistance(150.0f);
-	camera->SetDistanceMinMax(10.0f, 200.0f);
+	camera->SetDistanceMinMax(10.0f, 400.0f);
 
 	//first camera
 	//m_CameraMode = CameraMode::FirstPerson;
@@ -962,67 +1018,81 @@ void   FluidPBF::RenderFluidInSphere(float fElapsedTime)
 
 void FluidPBF::RenderFluidInLight(float fElapsedTime)
 {
-	/*m_SurfaceBuffers->SetRenderTargets(md3dDeviceContext, mDepthStencilView);
-	m_SurfaceBuffers->ClearRenderTargets(md3dDeviceContext, reinterpret_cast<const float*>(&Colors::Black), mDepthStencilView);
+	float blendFactor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	//render to texture
+	{
+		//render to g-buffer
+		m_SurfaceBuffers->SetRenderTargets(md3dDeviceContext, mDepthStencilView);
+		m_SurfaceBuffers->ClearRenderTargets(md3dDeviceContext, reinterpret_cast<const float*>(&Colors::Black), mDepthStencilView);
+		md3dDeviceContext->RSSetViewports(1, &mScreenViewport);
+
+	//	md3dDeviceContext->OMSetBlendState(RenderStates::BSDefault.Get(), blendFactor, 0xffffffff);
+		md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDefault.Get(), 1);
+		md3dDeviceContext->RSSetState(RenderStates::RSDefault.Get());
+
+		RenderFluidInSphere(fElapsedTime);
+
+		//render to texture
+		ID3D11RenderTargetView* renderTargets[1] = { m_SurfaceBuffers->GetLitSceneRTV() };
+		md3dDeviceContext->OMSetRenderTargets(1, renderTargets, mDepthStencilView);
+		md3dDeviceContext->ClearRenderTargetView(renderTargets[0], reinterpret_cast<const float*>(&Colors::Black));
+		md3dDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_STENCIL| D3D11_CLEAR_DEPTH, 1.0f, 0);
+		md3dDeviceContext->RSSetViewports(1, &mScreenViewport);
+		//md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDepthDisabledStencilUse.Get(), 1);
+
+		XMMATRIX temp = m_pCamera->GetViewProjXM();
+		XMMATRIX CamViewProjInv = XMMatrixInverse(&XMMatrixDeterminant(temp), temp);
+		XMMATRIX view = m_pCamera->GetViewXM();
+		XMMATRIX proj = m_pCamera->GetProjXM();
+		XMMATRIX world = XMMatrixIdentity();
+		XMMATRIX mViewProjection = world * view * proj;
+		XMMATRIX mvp = XMMatrixTranspose(mViewProjection);
+		m_LightShaderClass->SetCBLightBufferPara(mvp, m_pCamera->GetPosition(), true, CamViewProjInv);
+
+		ID3D11ShaderResourceView* tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Diffuse);
+		md3dDeviceContext->PSSetShaderResources(0, 1, &tex);
+		tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Normal);
+		md3dDeviceContext->PSSetShaderResources(1, 1, &tex);
+		md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
+		m_LightShaderClass->SetLight(md3dDeviceContext);
+		m_LightShaderClass->RenderLight(md3dDeviceContext);
+		m_OrthoWindow->Render(md3dDeviceContext);
+
+		// Unset the light buffer
+		md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
+		md3dDeviceContext->PSSetShaderResources(1, 1, &g_pNullSRV);
+		md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
+		md3dDeviceContext->PSSetShaderResources(3, 1, &g_pNullSRV);
+		md3dDeviceContext->PSSetShaderResources(4, 1, &g_pNullSRV);
+		md3dDeviceContext->PSSetShaderResources(5, 1, &g_pNullSRV);
+	}
+	
+	//render to back buffer
+	md3dDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthStencilView);
+	md3dDeviceContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::Silver));
+	md3dDeviceContext->ClearDepthStencilView(mDepthStencilView,  D3D11_CLEAR_DEPTH, 1.0f, 0);
+	md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDepthDisabledStencilUse.Get(), 1);
 	md3dDeviceContext->RSSetViewports(1, &mScreenViewport);
 
-	float blendFactor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	md3dDeviceContext->OMSetBlendState(RenderStates::BSDefault.Get(), blendFactor, 0xffffffff);
+	XMMATRIX temp = m_pCamera->GetViewProjXM();
+	XMMATRIX CamViewProjInv = XMMatrixInverse(&XMMatrixDeterminant(temp), temp);
+	XMMATRIX view = m_pCamera->GetBaseViewXM();
+	XMMATRIX proj = m_pCamera->GetOrthoProjXM();
+	XMMATRIX world = XMMatrixIdentity();
+	XMMATRIX mViewProjection = world * view * proj;
+	XMMATRIX mvp = XMMatrixTranspose(mViewProjection);
+	m_LightShaderClass->SetCBLightBufferPara(mViewProjection, m_pCamera->GetPosition(), true, CamViewProjInv);
+
+	ID3D11ShaderResourceView* tex = m_SurfaceBuffers->GetLitSceneSRV();
+	md3dDeviceContext->PSSetShaderResources(0, 1, &tex);
+	m_LightShaderClass->RenderLight(md3dDeviceContext);
+	m_OrthoWindow->Render(md3dDeviceContext);
+
+	// Turn z-buffer back on
 	md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDefault.Get(), 1);
-	md3dDeviceContext->RSSetState(RenderStates::RSDefault.Get());*/
-
-
-	//render in sphere (Point Sphere)
-    //md3dDeviceContext->OMSetRenderTargets(1, renderTargetsLitScene, mDepthStencilView);
-    //md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDepthDisabledStencilUse.Get(), 1);
-	//use the g-buffer
-	//ID3D11RenderTargetView* renderTargets[1] = { mRenderTargetView };
-	//md3dDeviceContext->OMSetRenderTargets(1, renderTargets, mDepthStencilView);
-	//md3dDeviceContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::Silver));
-	//md3dDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-	//md3dDeviceContext->RSSetViewports(1, &mScreenViewport);
-	//md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDepthDisabledStencilUse.Get(), 1);
-
-	//XMMATRIX temp = m_pCamera->GetViewProjXM();
-	//XMMATRIX CamViewProjInv = XMMatrixInverse(&XMMatrixDeterminant(temp), temp);
-	//XMMATRIX view = m_pCamera->GetBaseViewXM();
-	//XMMATRIX proj = m_pCamera->GetOrthoProjXM();
-	//XMMATRIX world = XMMatrixIdentity();
-	//XMMATRIX mViewProjection = world * view * proj;
-	//XMMATRIX mvp = XMMatrixTranspose(mViewProjection);
-	//m_LightShaderClass->SetCBLightBufferPara(mvp, m_pCamera->GetPosition(), true, CamViewProjInv);
-
-	//ID3D11ShaderResourceView* tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Diffuse);
-	//md3dDeviceContext->PSSetShaderResources(0, 1, &tex);
-	//tex = m_SurfaceBuffers->GetSRV(SurfaceBuffersIndex::Normal);
-	//md3dDeviceContext->PSSetShaderResources(1, 1, &tex);
-	//md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
-	//m_LightShaderClass->RenderLight(md3dDeviceContext);
-	//m_OrthoWindow->Render(md3dDeviceContext);
-
-	//// Unset the light buffer
-	//md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
-	//md3dDeviceContext->PSSetShaderResources(1, 1, &g_pNullSRV);
-	//md3dDeviceContext->PSSetShaderResources(2, 1, &g_pNullSRV);
-	//md3dDeviceContext->PSSetShaderResources(3, 1, &g_pNullSRV);
-	//md3dDeviceContext->PSSetShaderResources(4, 1, &g_pNullSRV);
-	//md3dDeviceContext->PSSetShaderResources(5, 1, &g_pNullSRV);
-	//
-	//// Turn z-buffer back on
-	//md3dDeviceContext->OMSetDepthStencilState(RenderStates::DSSDefault.Get(), 1);
-
-
-	//md3dDeviceContext->ClearDepthStencilView(mDepthStencilView,  D3D11_CLEAR_STENCIL, 1.0f, 0);
-	//md3dDeviceContext->RSSetState(0);
-	
-	//md3dDeviceContext->OMSetBlendState(0, blendFactor, 0xffffffff);
-	
-	//ID3D11ShaderResourceView* finalSRV = m_SurfaceBuffers->GetLitSceneSRV();
-	//md3dDeviceContext->PSSetShaderResources(0, 1, &finalSRV);
-	//m_LightShaderClass->RenderLight(md3dDeviceContext);
-	//m_OrthoWindow->Render(md3dDeviceContext);
-
-	//md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->PSSetShaderResources(0, 1, &g_pNullSRV);
+	md3dDeviceContext->RSSetState(0);
+	md3dDeviceContext->OMSetBlendState(0, blendFactor, 0xffffffff);
 }
 
 void FluidPBF::BuildRenderShader(const WCHAR* fileName)
