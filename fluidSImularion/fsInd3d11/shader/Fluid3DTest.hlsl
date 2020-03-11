@@ -25,25 +25,6 @@ struct ParticleDensity
     float density;
 };
 
-//cbuffer cbSimulationConstants : register(b0)
-//{
-//    uint g_iNumParticles;
-//    float g_fTimeStep;
-//    float g_fSmoothlen;
-//    float g_fPressureStiffness;
-//    float g_fRestDensity;
-//    float g_fDensityCoef;
-//    float g_fGradPressureCoef;
-//    float g_fLapViscosityCoef;
-//    float g_fWallStiffness;
-    
-//    float4 g_vGravity;
-//    float4 g_vGridDim; //cell size
-//    float4 g_vGridSize; //grid size
-//    float4 g_originPosW;
-    
-//};
-
 cbuffer cbSimulationConstants : register(b0)
 {
     uint g_iNumParticles;
@@ -127,7 +108,7 @@ uint CalcGridHash(int3 gridPos)
 unsigned int GridConstructKey(uint hash)
 {
 	// Bit pack [-----UNUSED-----][-----HASH-----]
-	//                16-bit          16-bit
+	//                8-bit          8-bit
     return dot(hash, 256);
 }
 
@@ -152,7 +133,7 @@ unsigned int GridGetValue(unsigned int keyvaluepair)
 // Build Grid
 //--------------------------------------------------------------------------------------
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
-void BuildGridCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint GI : SV_GroupIndex)
+void BuildGridCS(uint3 DTid : SV_DispatchThreadID)
 {
     const unsigned int P_ID = DTid.x; // Particle ID to operate on
     
@@ -168,13 +149,13 @@ void BuildGridCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3
 // Build Grid Indices
 //--------------------------------------------------------------------------------------
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
-void ClearGridIndicesCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint GI : SV_GroupIndex)
+void ClearGridIndicesCS(uint3 DTid : SV_DispatchThreadID)
 {
     GridIndicesRW[DTid.x] = uint2(0, 0);
 }
 
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
-void BuildGridIndicesCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint GI : SV_GroupIndex)
+void BuildGridIndicesCS(uint3 DTid : SV_DispatchThreadID)
 {
     //the grid key value pair is now a sorted list consisting of (grid hash, particle id)
     const unsigned int G_ID = DTid.x; // Grid ID to operate on
@@ -236,6 +217,7 @@ float3 CalculateLapVelocity(float r, float3 P_velocity, float3 N_velocity, float
 //--------------------------------------------------------------------------------------
 // Density Calculation
 //--------------------------------------------------------------------------------------
+
 float CalculateDensity(float r_sq)
 {
     const float h_sq = g_fSmoothlen * g_fSmoothlen;
@@ -259,6 +241,7 @@ void RearrangeParticlesCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThread
 //--------------------------------------------------------------------------------------
 // Optimized Grid + Sort Algorithm
 //--------------------------------------------------------------------------------------
+
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
 void DensityCS_Grid(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint GI : SV_GroupIndex)
 {
@@ -382,18 +365,6 @@ void IntegrateCS(uint3 Gid : SV_GroupID, uint3 DTid : SV_DispatchThreadID, uint3
     {
         float dist = dot(float4(position, 1), g_vPlanes[i]);
         acceleration += min(dist, 0) * -g_fWallStiffness * g_vPlanes[i].xyz;
-        //if (g_vPlanes[i].x != 0)
-        //{
-        //    position.x = g_vPlanes[i].w - g_fTimeStep * velocity.x;
-        //}
-        //if (g_vPlanes[i].y != 0)
-        //{
-        //    position.y = g_vPlanes[i].w - g_fTimeStep * velocity.y;
-        //}
-        //if (g_vPlanes[i].z != 0)
-        //{
-        //    position.z = g_vPlanes[i].w - g_fTimeStep * velocity.z;
-        //}
     }
     
     // Apply gravity

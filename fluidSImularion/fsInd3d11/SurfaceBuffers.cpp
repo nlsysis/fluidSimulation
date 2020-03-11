@@ -124,7 +124,7 @@ void SurfaceBuffers::ClearRenderTargets(ID3D11DeviceContext * dc, XMFLOAT4 RGBA,
 	{
 		dc->ClearRenderTargetView(mRenderTargetViewArray[i], color);
 	}
-	//dc->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	dc->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 ID3D11RenderTargetView * SurfaceBuffers::GetRenderTarget(UINT bufferIndex)

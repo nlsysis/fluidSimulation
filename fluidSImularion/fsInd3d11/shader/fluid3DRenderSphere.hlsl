@@ -97,26 +97,6 @@ void ParticleGS(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> S
     }
     SpriteStream.RestartStrip();
 }
-//--------------------------------------------------------------------------------------
-// Particle Geometry Shader2 create sphere vertices?
-//--------------------------------------------------------------------------------------
-
-[maxvertexcount(4)]
-void ParticleGS2(point VSParticleOut In[1], inout TriangleStream<GSParticleOut> SpriteStream)
-{
-    [unroll]
-    for (int i = 0; i < 4; i++)
-    {
-        GSParticleOut Out = (GSParticleOut) 0;
-        float4 position = float4(In[0].position, 1) + g_fParticleSize * float4(g_positions[i], 0, 0);
-        Out.position = mul(position, g_mViewProjection);
-        Out.color = In[0].color;
-        Out.texcoord = g_texcoords[i];
-        SpriteStream.Append(Out);
-    }
-    SpriteStream.RestartStrip();
-}
-
 
 //--------------------------------------------------------------------------------------
 // Pixel Shader

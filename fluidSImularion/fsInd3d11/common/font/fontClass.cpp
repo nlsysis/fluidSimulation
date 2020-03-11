@@ -16,6 +16,12 @@ FontClass::~FontClass()
 {
 }
 
+/**
+	*@brief Initial the parameters of font.
+	*@param[in] md3dDevice The decivice pointer of directx.
+	*@param[in] fontFilename The file name of the index file for font texture.
+	*@param[in] textureFilename The texture file name of font.
+*/
 bool FontClass::Initialize(ID3D11Device *device, const WCHAR *fontFilename, const WCHAR *textureFilename)
 {
 	bool result;
@@ -32,18 +38,21 @@ bool FontClass::Initialize(ID3D11Device *device, const WCHAR *fontFilename, cons
 	return true;
 }
 
+/**
+	*@brief Release the resources of the font.
+*/
 void FontClass::Shutdown()
 {
 	ReleaseTexture();
 
-	// Release the font data.
+	/// Release the font data.
 	ReleaseFontData();
 
 }
 
-/******************************************
+/**
 	*@brief load the uv and the font from fontdata.txt file 
-*******************************************/
+*/
 bool FontClass::LoadFontData(const WCHAR *filename)
 {
 	ifstream fin;
@@ -59,7 +68,7 @@ bool FontClass::LoadFontData(const WCHAR *filename)
 	{
 		return false;
 	}
-	//read in the 95 used ascii characters
+	///read in the 95 used ascii characters
 	for (i = 0; i < 95; i++)
 	{
 		fin.get(temp);
@@ -82,6 +91,9 @@ bool FontClass::LoadFontData(const WCHAR *filename)
 	return true;
 }
 
+/**
+	*@brief release the data of fontdata.txt file.
+*/
 void FontClass::ReleaseFontData()
 {
 	if (m_Font)
@@ -92,7 +104,7 @@ void FontClass::ReleaseFontData()
 }
 /**
 	*@brief load font.dds texture file
-**/
+*/
 bool FontClass::LoadTexture(ID3D11Device *device, const WCHAR *filename)
 {
 	bool result;
@@ -110,6 +122,9 @@ bool FontClass::LoadTexture(ID3D11Device *device, const WCHAR *filename)
 	return true;
 }
 
+/**
+	*@brief release the texture.
+*/
 void FontClass::ReleaseTexture()
 {
 	if (m_Texture)
@@ -120,13 +135,17 @@ void FontClass::ReleaseTexture()
 	}
 }
 
+/**
+	*@brief Get the texture of the font.
+*/
 ID3D11ShaderResourceView* FontClass::GetTexture()
 {
 	return m_Texture->GetTexture();
 }
-/********************************************************
-	*@brief:called by Textclass to build vertex buffers
-*********************************************************/
+
+/**
+	*@brief called by Textclass to build vertex buffers
+*/
 void FontClass::BuildVertexArray(void* vertices, const char* sentence, float drawX, float drawY)
 {
 	VertexType* vertexPtr;
@@ -170,7 +189,7 @@ void FontClass::BuildVertexArray(void* vertices, const char* sentence, float dra
 			vertexPtr[index].position = D3DXVECTOR3(drawX + m_Font[letter].size,drawY-16,0.0f);
 			vertexPtr[index].texture = D3DXVECTOR2(m_Font[letter].right, 1.0f);
 			index++;
-			// Update the x location for drawing by the size of the letter and one pixel.
+			/// Update the x location for drawing by the size of the letter and one pixel.
 			drawX = drawX + m_Font[letter].size + 1.0f;
 		}
 	}

@@ -7,22 +7,28 @@
 #include "..\imgui\imgui_impl_win32.h"
 #include "..\imgui\imgui_impl_dx11.h"
 
+/**
+	*@brief  This is just used to forward Windows messages from a global window
+	 procedure to our member function window procedure because we cannot
+	assign a member function to WNDCLASS::lpfnWndProc.
+*/
 namespace
-{
-	// This is just used to forward Windows messages from a global window
-	// procedure to our member function window procedure because we cannot
-	// assign a member function to WNDCLASS::lpfnWndProc.
+{ 
 	D3DApp* gd3dApp = nullptr;
 }
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	// Forward hwnd on because we can get messages (e.g., WM_CREATE)
-	// before CreateWindow returns, and thus before mhMainWnd is valid.
+	/// Forward hwnd on because we can get messages (e.g., WM_CREATE)
+	/// before CreateWindow returns, and thus before mhMainWnd is valid.
 	return gd3dApp->MsgProc(hwnd, msg, wParam, lParam);
 }
 
+/**
+	*@brief  Initial the paraments of directx and window.
+	*@param[in] hInstance the instance of this windows application.
+*/
 D3DApp::D3DApp(HINSTANCE hInstance)
 	: mhAppInst(hInstance),
 	mMainWndCaption(L"D3D11 Application"),
@@ -51,6 +57,9 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 	gd3dApp = this;
 }
 
+/**
+	*@brief  Release the resources of this application.
+*/
 D3DApp::~D3DApp()
 {
 	ReleaseCOM(mRenderTargetView);
@@ -58,7 +67,7 @@ D3DApp::~D3DApp()
 	ReleaseCOM(mSwapChain);
 	ReleaseCOM(mDepthStencilBuffer);
 
-	// Restore all default settings.
+	/// Restore all default settings.
 	if (md3dDeviceContext)
 		md3dDeviceContext->ClearState();
 
@@ -68,21 +77,37 @@ D3DApp::~D3DApp()
 	ImGui_ImplWin32_Shutdown();
 }
 
+/**
+	*@brief  Get the instance of this applicatin.
+	*@return[HINSTANCE] The instance of this application.
+*/
 HINSTANCE D3DApp::GetAppInst()const
 {
 	return mhAppInst;
 }
 
+/**
+	*@brief  Get the handle of this applicatin.
+	*@return[HWND] The handle of this application.
+*/
 HWND D3DApp::GetMainWnd()const
 {
 	return mhMainWnd;
 }
 
+/**
+	*@brief  Get the aspect ratio of the window.
+	*@return[float] The aspect ratio of the window.
+*/
 float D3DApp::GetAspectRatio()const
 {
 	return static_cast<float>(mClientWidth) / mClientHeight;
 }
 
+/**
+	*@brief  The main part of the application.
+	*@return[int] The windows message parameters.
+*/
 int D3DApp::Run()
 {
 	MSG msg = { 0 };
@@ -91,13 +116,13 @@ int D3DApp::Run()
 
 	while (msg.message != WM_QUIT)
 	{
-		// If there are Window messages then process them.
+		/// If there are Window messages then process them.
 		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		// Otherwise, do animation/game stuff.
+		/// Otherwise, do animation/game stuff.
 		else
 		{
 			mTimer.Tick();
@@ -119,6 +144,10 @@ int D3DApp::Run()
 	return (int)msg.wParam;
 }
 
+/**
+	*@brief  Initial the devices of mouse and keyboard and window and directx.
+	*@return[bool] If the initial is succeed.
+*/
 bool D3DApp::Init()
 {
 	m_pMouse = std::make_unique<DirectX::Mouse>();
@@ -134,26 +163,29 @@ bool D3DApp::Init()
 	return true;
 }
 
+/**
+	*@brief  Change the size of windows and reset some parameters. 
+*/
 void D3DApp::OnResize()
 {
 	assert(md3dDeviceContext);
 	assert(md3dDevice);
 	assert(mSwapChain);
 
-	// Release the old views, as they hold references to the buffers we
-	// will be destroying.  Also release the old depth/stencil buffer.
+	/// Release the old views, as they hold references to the buffers we
+	/// will be destroying.  Also release the old depth/stencil buffer.
 	ReleaseCOM(mRenderTargetView);
 	ReleaseCOM(mDepthStencilView);
 	ReleaseCOM(mDepthStencilBuffer);
 
-	// Resize the swap chain and recreate the render target view.
+	/// Resize the swap chain and recreate the render target view.
 	HR(mSwapChain->ResizeBuffers(1, mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
 	ID3D11Texture2D* backBuffer;
 	HR(mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
 	HR(md3dDevice->CreateRenderTargetView(backBuffer, 0, &mRenderTargetView));
 	ReleaseCOM(backBuffer);
 
-	// Create the depth/stencil buffer and view.
+	/// Create the depth/stencil buffer and view.
 
 	D3D11_TEXTURE2D_DESC depthStencilDesc;
 
@@ -161,15 +193,16 @@ void D3DApp::OnResize()
 	depthStencilDesc.Height = mClientHeight;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.ArraySize = 1;
-	depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+//	depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT ;
+	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;    //this type will make depth buffer editable.
 
-	// Use 4X MSAA? --must match swap chain MSAA values.
+	/// Use 4X MSAA? --must match swap chain MSAA values.
 	if (mEnable4xMsaa)
 	{
 		depthStencilDesc.SampleDesc.Count = 4;
 		depthStencilDesc.SampleDesc.Quality = m4xMsaaQuality - 1;
 	}
-	// No MSAA
+	/// No MSAA
 	else
 	{
 		depthStencilDesc.SampleDesc.Count = 1;
@@ -177,19 +210,32 @@ void D3DApp::OnResize()
 	}
 
 	depthStencilDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthStencilDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	depthStencilDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 	depthStencilDesc.CPUAccessFlags = 0;
 	depthStencilDesc.MiscFlags = 0;
 
 	HR(md3dDevice->CreateTexture2D(&depthStencilDesc, 0, &mDepthStencilBuffer));
-	HR(md3dDevice->CreateDepthStencilView(mDepthStencilBuffer, 0, &mDepthStencilView));
+	
+	D3D11_DEPTH_STENCIL_VIEW_DESC DSVDesc;
+	ZeroMemory(&DSVDesc, sizeof(DSVDesc));
+	DSVDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	DSVDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	DSVDesc.Texture2D.MipSlice = 0;
+	HR(md3dDevice->CreateDepthStencilView(mDepthStencilBuffer, &DSVDesc, &mDepthStencilView));
 
-	// Bind the render target view and depth/stencil view to the pipeline.
+	D3D11_SHADER_RESOURCE_VIEW_DESC depthStencilSRViewDesc;
+	memset(&depthStencilSRViewDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+	depthStencilSRViewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	depthStencilSRViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	depthStencilSRViewDesc.Texture2D.MipLevels = 1;
+
+	HR(md3dDevice->CreateShaderResourceView(mDepthStencilBuffer, &depthStencilSRViewDesc, &mDepthStencilSRView));
+	/// Bind the render target view and depth/stencil view to the pipeline.
 
 	md3dDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthStencilView);
 
 
-	// Set the viewport transform.
+	/// Set the viewport transform.
 
 	mScreenViewport.TopLeftX = 0;
 	mScreenViewport.TopLeftY = 0;
@@ -200,11 +246,15 @@ void D3DApp::OnResize()
 
 	md3dDeviceContext->RSSetViewports(1, &mScreenViewport);
 
-	//init imgui d3d impl
+	///init imgui d3d impl
 	ImGui_ImplDX11_Init(md3dDevice, md3dDeviceContext);
 	
 }
 
+/**
+	*@brief  Handle the massages of the applicaion.
+	*@return[LRESULT] 
+*/
 LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
@@ -226,7 +276,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	case WM_SIZE:
-		// Save the new client area dimensions.
+		/// Save the new client area dimensions.
 		mClientWidth = LOWORD(lParam);
 		mClientHeight = HIWORD(lParam);
 		if (md3dDevice)
@@ -247,7 +297,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			else if (wParam == SIZE_RESTORED)
 			{
 
-				// Restoring from minimized state?
+				/// Restoring from minimized state?
 				if (mMinimized)
 				{
 					mAppPaused = false;
@@ -255,7 +305,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					OnResize();
 				}
 
-				// Restoring from maximized state?
+				/// Restoring from maximized state?
 				else if (mMaximized)
 				{
 					mAppPaused = false;
@@ -265,22 +315,22 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				else if (mResizing)
 				{
 				}
-				else // API call such as SetWindowPos or mSwapChain->SetFullscreenState.
+				else /// API call such as SetWindowPos or mSwapChain->SetFullscreenState.
 				{
 					OnResize();
 				}
 			}
 		}
 		return 0;
-		// WM_EXITSIZEMOVE is sent when the user grabs the resize bars.
+		/// WM_EXITSIZEMOVE is sent when the user grabs the resize bars.
 	case WM_ENTERSIZEMOVE:
 		mAppPaused = true;
 		mResizing = true;
 		mTimer.Stop();
 		return 0;
 
-		// WM_EXITSIZEMOVE is sent when the user releases the resize bars.
-		// Here we reset everything based on the new window dimensions.
+		/// WM_EXITSIZEMOVE is sent when the user releases the resize bars.
+		/// Here we reset everything based on the new window dimensions.
 	case WM_EXITSIZEMOVE:
 		mAppPaused = false;
 		mResizing = false;
@@ -288,21 +338,21 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		OnResize();
 		return 0;
 
-		// WM_DESTROY is sent when the window is being destroyed.
+		/// WM_DESTROY is sent when the window is being destroyed.
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
-		// Catch this message so to prevent the window from becoming too small.
+		/// Catch this message so to prevent the window from becoming too small.
 	case WM_GETMINMAXINFO:
 		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
 		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
 		return 0;
 
 	case WM_MENUCHAR:
-	// Don't beep when we alt-enter.
+	/// Don't beep when we alt-enter.
 		return MAKELRESULT(0, MNC_CLOSE);
 
-	// monitor the mouse event.
+	/// monitor the mouse event.
 	case WM_INPUT:
 
 	case WM_LBUTTONDOWN:
@@ -339,6 +389,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 /**
 	*@brief Init the window of App
+	*@return[bool] If the initial succeed.
 */
 bool D3DApp::InitMainWindow()
 {
@@ -360,7 +411,7 @@ bool D3DApp::InitMainWindow()
 		return false;
 	}
 
-	// Compute window rectangle dimensions based on requested client area dimensions.
+	/// Compute window rectangle dimensions based on requested client area dimensions.
 	RECT R = { 0, 0, mClientWidth, mClientHeight };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
@@ -376,7 +427,7 @@ bool D3DApp::InitMainWindow()
 
 	ShowWindow(mhMainWnd, SW_SHOW);
 
-	//Init ImGui Win32 Impl
+	///Init ImGui Win32 Impl
 	ImGui_ImplWin32_Init(mhMainWnd);
 
 	UpdateWindow(mhMainWnd);
@@ -384,19 +435,19 @@ bool D3DApp::InitMainWindow()
 	return true;
 }
 /**
-	*brief Init the directX11 devices
+	*@brief Init the directX11 devices
 */
 bool D3DApp::InitDirect3D()
 {
-	// Create the device and device context.
+	/// Create the device and device context.
 
-	UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;  //directx2D need BGRA support
+	UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;  ///< directx2D need BGRA support
 #if defined(DEBUG) || defined(_DEBUG)  
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
 	IDXGIFactory* pFactory;
-	IDXGIAdapter* pAdapter;             //for see about the equipment ability
+	IDXGIAdapter* pAdapter;             ///<　for see about the equipment ability
 	IDXGIOutput* adapterOutput;
 	std::vector <IDXGIAdapter*> vAdapters;
 	HR(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&pFactory));
@@ -409,11 +460,11 @@ bool D3DApp::InitDirect3D()
 	
 	D3D_FEATURE_LEVEL featureLevel;
 	HRESULT hr = D3D11CreateDevice(
-		0,                 // default adapter
+		0,                 ///< default adapter
 		md3dDriverType,
-		0,                 // no software device
+		0,                 ///< no software device
 		createDeviceFlags,
-		0, 0,              // default feature level array
+		0, 0,              ///< default feature level array
 		D3D11_SDK_VERSION,
 		&md3dDevice,
 		&featureLevel,
@@ -431,15 +482,17 @@ bool D3DApp::InitDirect3D()
 		return false;
 	}
 	D3D11SetDebugObjectName(md3dDeviceContext, "DeviceContext");
-	// Check 4X MSAA quality support for our back buffer format.
-	// All Direct3D 11 capable devices support 4X MSAA for all render 
-	// target formats, so we only need to check quality support.
+	/** 
+		Check 4X MSAA quality support for our back buffer format.
+	 All Direct3D 11 capable devices support 4X MSAA for all render 
+	 target formats, so we only need to check quality support.
+	*/
 
 	HR(md3dDevice->CheckMultisampleQualityLevels(
 		DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality));
 	assert(m4xMsaaQuality > 0);
 
-	// Fill out a DXGI_SWAP_CHAIN_DESC to describe our swap chain.
+	/// Fill out a DXGI_SWAP_CHAIN_DESC to describe our swap chain.
 
 	DXGI_SWAP_CHAIN_DESC sd;
 	sd.BufferDesc.Width = mClientWidth;
@@ -450,13 +503,13 @@ bool D3DApp::InitDirect3D()
 	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-	// Use 4X MSAA? 
+	/// Use 4X MSAA? 
 	if (mEnable4xMsaa)
 	{
 		sd.SampleDesc.Count = 4;
 		sd.SampleDesc.Quality = m4xMsaaQuality - 1;
 	}
-	// No MSAA
+	/// No MSAA
 	else
 	{
 		sd.SampleDesc.Count = 1;
@@ -470,10 +523,12 @@ bool D3DApp::InitDirect3D()
 	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 	sd.Flags = 0;
 
-	// To correctly create the swap chain, we must use the IDXGIFactory that was
-	// used to create the device.  If we tried to use a different IDXGIFactory instance
-	// (by calling CreateDXGIFactory), we get an error: "IDXGIFactory::CreateSwapChain: 
-	// This function is being called with a device from a different IDXGIFactory."
+	/** 
+		To correctly create the swap chain, we must use the IDXGIFactory that was
+	 used to create the device.  If we tried to use a different IDXGIFactory instance
+	 (by calling CreateDXGIFactory), we get an error: "IDXGIFactory::CreateSwapChain: 
+	 This function is being called with a device from a different IDXGIFactory."
+	*/
 
 	IDXGIDevice* dxgiDevice = 0;
 	HR(md3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice));
@@ -490,27 +545,12 @@ bool D3DApp::InitDirect3D()
 	ReleaseCOM(dxgiAdapter);
 	ReleaseCOM(dxgiFactory);
 
-	// The remaining steps that need to be carried out for d3d creation
-	// also need to be executed every time the window is resized.  So
-	// just call the OnResize method here to avoid code duplication.
-
+	/**
+		The remaining steps that need to be carried out for d3d creation
+	 also need to be executed every time the window is resized.  So
+	 just call the OnResize method here to avoid code duplication.
+	*/
 	OnResize();
-
-	//D3D11_RASTERIZER_DESC rasterDesc;
-	//rasterDesc.AntialiasedLineEnable = false;
-	//rasterDesc.CullMode = D3D11_CULL_BACK;
-	//rasterDesc.DepthBias = 0;
-	//rasterDesc.DepthBiasClamp = 0.0f;
-	//rasterDesc.DepthClipEnable = true;
-	//rasterDesc.FillMode = D3D11_FILL_SOLID;
-	//rasterDesc.FrontCounterClockwise = false;
-	//rasterDesc.MultisampleEnable = false;
-	//rasterDesc.ScissorEnable = false;
-	//rasterDesc.SlopeScaledDepthBias = 0.0f;
-
-	//// Create the rasterizer state from the description we just filled out.
-	//HR(md3dDevice->CreateRasterizerState(&rasterDesc, &m_rasterState));
-	//md3dDeviceContext->RSSetState(m_rasterState);
 	m_orthoMatrix = XMMatrixOrthographicLH((float)mClientWidth, (float)mClientHeight, 0.1f, mScreenDepth);
 	return true;
 }
@@ -524,7 +564,7 @@ void D3DApp::CalculateFrameStats()
 
 	frameCnt++;
 
-	// Compute averages over one second period.
+	/// Compute averages over one second period.
 	if ((mTimer.TotalTime() - timeElapsed) >= 1.0f)
 	{
 		float fps = (float)frameCnt; // fps = frameCnt / 1
@@ -537,7 +577,7 @@ void D3DApp::CalculateFrameStats()
 			<< L"Frame Time: " << mspf << L" (ms)";
 		SetWindowText(mhMainWnd, outs.str().c_str());
 
-		// Reset for next average.
+		/// Reset for next average.
 		frameCnt = 0;
 		timeElapsed += 1.0f;
 	}

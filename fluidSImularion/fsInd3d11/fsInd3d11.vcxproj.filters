@@ -260,7 +260,6 @@
     <CustomBuild Include="shader\LightHelper.hlsl">
       <Filter>shader</Filter>
     </CustomBuild>
-    <CustomBuild Include="shader\fluid3DRenderSphere.hlsl" />
     <CustomBuild Include="shader\FluidRenderSphere.hlsl">
       <Filter>shader</Filter>
     </CustomBuild>
@@ -270,11 +269,14 @@
     <CustomBuild Include="shader\ObjShader.hlsl">
       <Filter>shader</Filter>
     </CustomBuild>
-    <CustomBuild Include="shader\LightShader.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="shader\RenderFluidInLight.hlsl">
+    <CustomBuild Include="shader\LightShader.hlsl">
       <Filter>shader</Filter>
-    </FxCompile>
+    </CustomBuild>
+    <CustomBuild Include="shader\RenderFluidInLight.hlsl">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\fluid3DRenderSphere.hlsl">
+      <Filter>shader</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

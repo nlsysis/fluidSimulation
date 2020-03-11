@@ -1,3 +1,7 @@
+/**
+	*@file FontShaderClass.cpp
+	*@brief Called by TextClass.cpp which set the shader parameters of the text.
+*/
 #include "Fontshaderclass.h"
 
 FontShaderClass::FontShaderClass()
@@ -23,16 +27,16 @@ bool FontShaderClass::Initialize(ID3D11Device * device,HWND hwnd)
 {
 	return InitializeShader(device, hwnd, L".\\shader\\font.hlsl", L".\\shader\\font.hlsl");
 }
-/**********************************************
+/**
 	*@brief calls ShutdownShader function
-***********************************************/
+*/
 void FontShaderClass::Shutdown()
 {
 	ShutdownShader();
 }
-/**********************************************
+/**
 	*@brief set shader patameters
-***********************************************/
+*/
 bool FontShaderClass::Render(ID3D11DeviceContext* deviceContext, int indexCount, XMMATRIX worldMatrix, XMMATRIX viewMatrix,
 	XMMATRIX projectionMatrix, ID3D11ShaderResourceView* texture, D3DXVECTOR4 pixelcolor)
 {
@@ -40,13 +44,13 @@ bool FontShaderClass::Render(ID3D11DeviceContext* deviceContext, int indexCount,
 	result = SetShaderParmeters(deviceContext, worldMatrix, viewMatrix, projectionMatrix, texture, pixelcolor);
 	if (!result) return false;
 	
-	//render the prepared buffers with the shader
+	///render the prepared buffers with the shader
 	RenderShader(deviceContext,indexCount);
 	return true;
 }
-/**********************************************
+/**
 	*@brief loads the new HLSL font vertex
-***********************************************/
+*/
 bool FontShaderClass::InitializeShader(ID3D11Device *device, HWND hwnd,const WCHAR *vsFilename, const WCHAR *psFilename)
 {
 	HRESULT result;
@@ -105,7 +109,7 @@ bool FontShaderClass::InitializeShader(ID3D11Device *device, HWND hwnd,const WCH
 	{
 		return false;
 	}
-	//create the vertex input layout description
+	///create the vertex input layout description
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -195,35 +199,35 @@ void FontShaderClass::ShutdownShader()
 		m_pixelBuffer = 0;
 	}
 
-	// Release the sampler state.
+	/// Release the sampler state.
 	if (m_sampleState)
 	{
 		m_sampleState->Release();
 		m_sampleState = 0;
 	}
 
-	// Release the constant buffer.
+	/// Release the constant buffer.
 	if (m_constantBuffer)
 	{
 		m_constantBuffer->Release();
 		m_constantBuffer = 0;
 	}
 
-	// Release the layout.
+	/// Release the layout.
 	if (m_layout)
 	{
 		m_layout->Release();
 		m_layout = 0;
 	}
 
-	// Release the pixel shader.
+	/// Release the pixel shader.
 	if (m_pixelShader)
 	{
 		m_pixelShader->Release();
 		m_pixelShader = 0;
 	}
 
-	// Release the vertex shader.
+	/// Release the vertex shader.
 	if (m_vertexShader)
 	{
 		m_vertexShader->Release();
@@ -238,29 +242,29 @@ void FontShaderClass::OutputShaderErrorMessage(ID3D10Blob *errorMessage, HWND hw
 	ofstream fout;
 
 
-	// Get a pointer to the error message text buffer.
+	/// Get a pointer to the error message text buffer.
 	compileErrors = (char*)(errorMessage->GetBufferPointer());
 
-	// Get the length of the message.
+	/// Get the length of the message.
 	bufferSize = errorMessage->GetBufferSize();
 
-	// Open a file to write the error message to.
+	/// Open a file to write the error message to.
 	fout.open("shader-error.txt");
 
-	// Write out the error message.
+	/// Write out the error message.
 	for (i = 0; i < bufferSize; i++)
 	{
 		fout << compileErrors[i];
 	}
 
-	// Close the file.
+	/// Close the file.
 	fout.close();
 
-	// Release the error message.
+	/// Release the error message.
 	errorMessage->Release();
 	errorMessage = 0;
 
-	// Pop a message up on the screen to notify the user to check the text file for compile errors.
+	/// Pop a message up on the screen to notify the user to check the text file for compile errors.
 	MessageBox(hwnd, L"Error compiling shader.  Check shader-error.txt for message.", shaderFilename, MB_OK);
 }
 
@@ -274,7 +278,7 @@ bool FontShaderClass::SetShaderParmeters(ID3D11DeviceContext *deviceContext, XMM
 	PixelBufferType* dataPtr2;
 	XMMATRIX mvp = worldMatrix * viewMatrix * projectionMatrix;
 
-	//lock the  constant buffer
+	///lock the  constant buffer
 	result = deviceContext->Map(m_constantBuffer,0,D3D11_MAP_WRITE_DISCARD,0,&mappedResource);
 	if (FAILED(result))
 	{
@@ -286,7 +290,7 @@ bool FontShaderClass::SetShaderParmeters(ID3D11DeviceContext *deviceContext, XMM
 	dataPtr->gWorldViewProjection = mvp;
 
 	deviceContext->Unmap(m_constantBuffer,0);
-	//set the constant buffer to vsshader
+	///set the constant buffer to vsshader
 	deviceContext->VSSetConstantBuffers(0,1,&m_constantBuffer);
 
 	deviceContext->PSSetShaderResources(0,1,&texture);
@@ -311,7 +315,7 @@ void FontShaderClass::RenderShader(ID3D11DeviceContext *deviceContext, int index
 	deviceContext->VSSetShader(m_vertexShader, NULL, 0);
 	deviceContext->PSSetShader(m_pixelShader, NULL, 0);
 
-	//set sampler state in the pixel shader
+	///set sampler state in the pixel shader
 	deviceContext->PSSetSamplers(0,1,&m_sampleState);
 
 	deviceContext->DrawIndexed(indexCount,0,0);

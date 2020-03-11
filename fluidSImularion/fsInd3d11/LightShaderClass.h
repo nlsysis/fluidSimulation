@@ -11,8 +11,6 @@ public:
 	~LightShaderClass();
 
 	bool Init(ID3D11Device* device);
-	void OnResize();
-	void UpdateScene(float dt);
 	void RenderLight(ID3D11DeviceContext* deviceContext);
 	void SetCBLightBufferPara(XMMATRIX mvp, XMFLOAT3 eyePosW, bool skipLighting, XMMATRIX camViewProjInv);
 	void SetLight(ID3D11DeviceContext* deviceContext);
@@ -22,7 +20,7 @@ private:
 	void SafeCompileShaderFromFile(const WCHAR* fileName, LPCSTR enterPoint, LPCSTR shaderModel, ID3DBlob **ppBlob);
 
 private:
-	Microsoft::WRL::ComPtr <ID3D11Buffer>               mDirLightBuffer;
+	Microsoft::WRL::ComPtr < ID3D11Buffer>               mDirLightBuffer;
 	Microsoft::WRL::ComPtr < ID3D11ShaderResourceView>  DirLightResourceView;
 	Microsoft::WRL::ComPtr < ID3D11Buffer>              mPointLightBuffer;
 	Microsoft::WRL::ComPtr < ID3D11ShaderResourceView>  PointLightResourceView;
