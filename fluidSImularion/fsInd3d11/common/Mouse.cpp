@@ -12,42 +12,6 @@ struct handle_closer { void operator()(HANDLE h) { if (h) CloseHandle(h); } };
 typedef std::unique_ptr<void, handle_closer> ScopedHandle;
 
 #if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP)
-
-//======================================================================================
-// Win32 desktop implementation
-//======================================================================================
-
-//
-// For a Win32 desktop application, in your window setup be sure to call this method:
-//
-// m_mouse->SetWindow(hwnd);
-//
-// And call this static function from your Window Message Procedure
-//
-// LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-// {
-//     switch (message)
-//     {
-//     case WM_ACTIVATEAPP:
-//     case WM_INPUT:
-//     case WM_MOUSEMOVE:
-//     case WM_LBUTTONDOWN:
-//     case WM_LBUTTONUP:
-//     case WM_RBUTTONDOWN:
-//     case WM_RBUTTONUP:
-//     case WM_MBUTTONDOWN:
-//     case WM_MBUTTONUP:
-//     case WM_MOUSEWHEEL:
-//     case WM_XBUTTONDOWN:
-//     case WM_XBUTTONUP:
-//     case WM_MOUSEHOVER:
-//         Mouse::ProcessMessage(message, wParam, lParam);
-//         break;
-//
-//     }
-// }
-//
-
 class Mouse::Impl
 {
 public:

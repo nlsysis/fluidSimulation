@@ -190,7 +190,9 @@ bool FontShaderClass::InitializeShader(ID3D11Device *device, HWND hwnd,const WCH
 	}
 	return true;
 }
-
+/**
+	*@brief release the resources.
+*/
 void FontShaderClass::ShutdownShader()
 {
 	if (m_pixelBuffer)
@@ -234,7 +236,9 @@ void FontShaderClass::ShutdownShader()
 		m_vertexShader = 0;
 	}
 }
-
+/**
+	*@brief output error message when load the shader.
+*/
 void FontShaderClass::OutputShaderErrorMessage(ID3D10Blob *errorMessage, HWND hwnd, const WCHAR *shaderFilename)
 {
 	char* compileErrors;
@@ -267,7 +271,9 @@ void FontShaderClass::OutputShaderErrorMessage(ID3D10Blob *errorMessage, HWND hw
 	/// Pop a message up on the screen to notify the user to check the text file for compile errors.
 	MessageBox(hwnd, L"Error compiling shader.  Check shader-error.txt for message.", shaderFilename, MB_OK);
 }
-
+/**
+	*@brief set constant buffers.
+*/
 bool FontShaderClass::SetShaderParmeters(ID3D11DeviceContext *deviceContext, XMMATRIX worldMatrix,
 	XMMATRIX viewMatrix, XMMATRIX projectionMatrix, ID3D11ShaderResourceView * texture, D3DXVECTOR4 pixelColor)
 {
@@ -309,6 +315,9 @@ bool FontShaderClass::SetShaderParmeters(ID3D11DeviceContext *deviceContext, XMM
 	return true;
 }
 
+/**
+	*@brief set render pipeline.
+*/
 void FontShaderClass::RenderShader(ID3D11DeviceContext *deviceContext, int indexCount)
 {
 	deviceContext->IASetInputLayout(m_layout);

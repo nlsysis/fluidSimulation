@@ -27,13 +27,13 @@ ComPtr<ID3D11DepthStencilState> RenderStates::DSSDefault = nullptr;
 
 bool RenderStates::IsInit()
 {
-	// init state
+	/// init state
 	return RSWireframe != nullptr;
 }
 
 void RenderStates::InitAll(ID3D11Device * device)
 {
-	// if init all state
+	/// if init all state
 	if (IsInit())
 		return;
 	// ******************

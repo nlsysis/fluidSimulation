@@ -1,5 +1,8 @@
 #include "SurfaceBuffers.h"
 
+/**
+   *@brief empty the G-buffer.
+*/
 SurfaceBuffers::SurfaceBuffers()
 {
 	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
@@ -15,7 +18,9 @@ SurfaceBuffers::~SurfaceBuffers()
 	Shutdown();
 }
 
-//init the texture as the setting size
+/**
+	@brief init the G-Buffer.
+*/
 bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 {
 	HRESULT hr = S_OK;
@@ -25,10 +30,10 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 
 	DXGI_FORMAT formats[SurfaceBuffersIndex::Count];
-	formats[SurfaceBuffersIndex::Diffuse] = DXGI_FORMAT_R8G8B8A8_UNORM;     //for the color- target0 in PSFluidRenderSphere 
-	formats[SurfaceBuffersIndex::Normal] = DXGI_FORMAT_R16G16B16A16_FLOAT;  //for the normal- target1 in PSFluidRenderSphere
+	formats[SurfaceBuffersIndex::Diffuse] = DXGI_FORMAT_R8G8B8A8_UNORM;     //<for the color- target0 in PSFluidRenderSphere 
+	formats[SurfaceBuffersIndex::Normal] = DXGI_FORMAT_R16G16B16A16_FLOAT;  //<for the normal- target1 in PSFluidRenderSphere
 
-	//setup render target texture description
+	///setup render target texture description
 	ZeroMemory(&textureDesc, sizeof(D3D11_TEXTURE2D_DESC));
 	textureDesc.Width = width;
 	textureDesc.Height = height;
@@ -40,7 +45,7 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	textureDesc.CPUAccessFlags = 0;
 	textureDesc.MiscFlags = 0;
 
-	//create the render target texture
+	///create the render target texture
 	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		textureDesc.Format = formats[i];
@@ -50,12 +55,12 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 			return false;
 	}
 
-	//renderTargetView description
+	///renderTargetView description
 	ZeroMemory(&renderTargetViewDesc, sizeof(D3D11_RENDER_TARGET_VIEW_DESC));
 	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-	//create renderTargetView
+	///create renderTargetView
 	for (UINT i = 0; i < SurfaceBuffersIndex::Count; i++)
 	{
 		renderTargetViewDesc.Format = formats[i];
@@ -65,7 +70,7 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 			return false;
 	}
 	
-	//shaderResourceView description
+	///shaderResourceView description
 	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
@@ -100,17 +105,26 @@ bool SurfaceBuffers::Init(ID3D11Device * device, UINT width, UINT height)
 	return true;
 }
 
+/**
+	@brief called the the window size changed.
+*/
 void SurfaceBuffers::OnResize(ID3D11Device * device, UINT width, UINT height)
 {
 	Shutdown();
 	Init(device, width, height);
 }
 
+/**
+	@brief set  renderTargets.
+*/
 void SurfaceBuffers::SetRenderTargets(ID3D11DeviceContext * dc, ID3D11DepthStencilView * depthStencilView)
 {
 	dc->OMSetRenderTargets(SurfaceBuffersIndex::Count,mRenderTargetViewArray,depthStencilView);
 }
-//clear two renderTargetView
+
+/**
+	@brief clear  renderTargetView.
+*/
 void SurfaceBuffers::ClearRenderTargets(ID3D11DeviceContext * dc, XMFLOAT4 RGBA, ID3D11DepthStencilView * depthStencilView)
 {
 	float color[4];

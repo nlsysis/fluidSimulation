@@ -1,4 +1,5 @@
-﻿#include "Fluid3D.h"
+﻿// The test version for fluid simulation
+#include "Fluid3D.h"
 #include "cbufferStruct.h"
 #include <random>
 #include "imgui/imgui_impl_dx11.h"

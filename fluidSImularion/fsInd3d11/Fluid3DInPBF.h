@@ -151,4 +151,7 @@ private:
 
 	LightShaderClass* m_LightShaderClass;
 	OrthoWindow* m_OrthoWindow;
+
+	UINT g_iNumParticles;
+	XMFLOAT3 g_vGravity; //<default gracity
 };

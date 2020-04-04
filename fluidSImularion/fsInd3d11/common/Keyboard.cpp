@@ -3,8 +3,6 @@
 #include <wrl/client.h>
 #include "Keyboard.h"
 
-
-
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
@@ -41,34 +39,6 @@ namespace
 
 
 #if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP)
-
-//======================================================================================
-// Win32 desktop implementation
-//======================================================================================
-
-//
-// For a Win32 desktop application, call this function from your Window Message Procedure
-//
-// LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-// {
-//     switch (message)
-//     {
-//
-//     case WM_ACTIVATEAPP:
-//         Keyboard::ProcessMessage(message, wParam, lParam);
-//         break;
-//
-//     case WM_KEYDOWN:
-//     case WM_SYSKEYDOWN:
-//     case WM_KEYUP:
-//     case WM_SYSKEYUP:
-//         Keyboard::ProcessMessage(message, wParam, lParam);
-//         break;
-//
-//     }
-// }
-//
-
 class Keyboard::Impl
 {
 public:
@@ -237,12 +207,9 @@ Keyboard& Keyboard::Get()
 	return *Impl::s_keyboard->mOwner;
 }
 
-
-
-//======================================================================================
-// KeyboardStateTracker
-//======================================================================================
-
+/**
+	@brief KeyboardStateTracker
+*/
 void Keyboard::KeyboardStateTracker::Update(const State& state)
 {
 	auto currPtr = reinterpret_cast<const uint32_t*>(&state);

@@ -32,9 +32,9 @@ struct MatrixBufferType
 	XMMATRIX mvp;
 };
 
-//constant buffer layout
+///constant buffer layout
 #pragma warning(push)
-#pragma warning(disable:4324)   //structure was padded due to _declspec(align())
+#pragma warning(disable:4324)   ///structure was padded due to _declspec(align())
 _DECLSPEC_ALIGN_16_ struct CBSimulationConstants3D
 {
 	UINT iNumParticles;
@@ -99,9 +99,10 @@ _DECLSPEC_ALIGN_16_ struct CBEyePos
 	float padding = 0;
 };
 #pragma warning(pop)
-// --------------------------------------------------------------------------------------
-// Helper for creating constant buffers
-//--------------------------------------------------------------------------------------
+
+/**
+	*@brief Helper for creating constant buffers
+*/
 template <class T>
 HRESULT CreateConstantBuffer(ID3D11Device* pd3dDevice, ID3D11Buffer** ppCB)
 {
@@ -134,9 +135,9 @@ HRESULT CreateConstantBuffer2(ID3D11Device* pd3dDevice, ID3D11Buffer** ppCB)
 	return hr;
 }
 
-//--------------------------------------------------------------------------------------
-// Helper for creating structured buffers with an SRV and UAV
-//--------------------------------------------------------------------------------------
+/**
+	*@brief Helper for creating structured buffers with an SRV and UAV
+*/
 template <class T>
 HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D11Buffer** ppBuffer, ID3D11ShaderResourceView** ppSRV, ID3D11UnorderedAccessView** ppUAV, const T* pInitialData = NULL)
 {
@@ -156,7 +157,7 @@ HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D
 	bufferInitData.pSysMem = pInitialData;
 	HR(pd3dDevice->CreateBuffer(&bufferDesc, (pInitialData) ? &bufferInitData : NULL, ppBuffer));
 
-	// Create SRV
+	/// Create SRV
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	ZeroMemory(&srvDesc, sizeof(srvDesc));
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -164,7 +165,7 @@ HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D
 	srvDesc.Buffer.ElementWidth = iNumElements;
 	HR(pd3dDevice->CreateShaderResourceView(*ppBuffer, &srvDesc, ppSRV));
 
-	// Create UAV
+	/// Create UAV
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
 	ZeroMemory(&uavDesc, sizeof(uavDesc));
 	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -175,7 +176,7 @@ HRESULT CreateStructuredBuffer(ID3D11Device* pd3dDevice, UINT iNumElements, ID3D
 	return hr;
 }
 
-//constant buffer for objModel
+///constant buffer for objModel
 struct cbPerFrame
 {
 	XMFLOAT3 gEyePosW;
@@ -195,7 +196,7 @@ struct cbMatrix
 };
 
 
-//constant buffer for light shader
+///constant buffer for light shader
 struct  cbLightBuffer
 {
 	UINT gPointLightCount;
